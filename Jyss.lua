@@ -1,5 +1,13 @@
 --Jyss.lua
 
+
+-- B Ball G Gripper L Lasor F Floater
+-- spawn one new every room finished
+ORDERS = {
+    [1]="BBBBBBBBB"
+}
+
+
 function solid(x,y)
     if x == 120 then x = 119
     elseif x>(240//2)-1 then x=240-x end --or 239
@@ -14,6 +22,7 @@ function solid(x,y)
 end
 
 function spawnplayer()
+    br={}
     tab.breaker = 0
     tab.inbreaker = 0
     tab.posbreak = {}
@@ -29,6 +38,7 @@ JUMP_DY={-3,-3,-3,-3,-2,-2,-2,-2,
 function init()
     solids={[1]=true,[17]=true}
     t=0
+    br={}
     p={
         dx=0,
         dy=0,
@@ -43,7 +53,7 @@ function init()
     }
     game={
         t=0,
-        part=0,
+        part=1,
         coldone = {},
         ccol = 14,
         tdone = {}
@@ -57,7 +67,7 @@ function init()
     spawnplayer()
     ball = {
         {
-            x=100,
+            x=math.random(0, 240),
             y=0,
             vx=0,
             vy=1
@@ -134,17 +144,51 @@ function TIC()
     
     progress()
     if peek(0x03FC0 + 0x3*game.ccol)>255-speedlight-1 then print("Ready to teleport") end
+    
+    renderbr()
     renderp()
     checkinput()
     rooms()
     timer()
     t=t+1
     balls()
+    checkcoll()
+    floatest()
+    lastest()
+    --if t%60%2==0 then floatest() end
+end
+
+function respawn(obj)
+    obj.x = math.random(0, 240)
+    obj.y = 0
+end
+
+thex=0
+fx=0
+fy=0
+
+
+l1=0
+l2=0
+function lastest()
+    if t%60==0 then l1=math.random(0, 240) l2=math.random(0, 240) end
+    if t%60>0 and t%60<30 and t%60%10>4 then rect(l1,0,3,3,8) rect(l2, 132, 3, 3, 8) end
+    if t%60>30 and t%60<50 then line(l1, 0, l2, 136,8) rect(l1,0,3,3,8) rect(l2, 132, 3, 3, 8) end
+end
+
+function floatest()
+    local waves=4
+    thex=thex+0.5
+    if thex==240 then thex=0 end
+    local x = thex
+    fy=math.sin(x/240*math.pi*waves)*(136//2)+136//2
+    spr(358, x, fy, 0)
 end
 
 function balls()
     for i,j in pairs(ball) do
 
+        --[[
         if solid(j.x+j.vx,j.y+j.vy) or solid(j.x+7+j.vx,j.y+j.vy) or solid(j.x+j.vx,j.y+j.vy) or solid(j.x+7+j.vx,j.y+7+j.vy) then
             j.vx=-j.vx
         end
@@ -156,7 +200,9 @@ function balls()
         if j.vy<0 and (solid(j.x+j.vx,j.y+j.vy) or solid(j.x+7+j.vx,j.y+j.vy)) then
             j.vy=-j.vy
         end   
-
+        ]]
+        if not CanMoveEx(j.x, j.y, {x=0,y=0,w=16,h=16},0) then respawn(j) end
+        if not CanMoveEx(j.x+j.vx, j.y+j.vy, {x=0,y=0,w=16,h=16},0) then j.vy=-j.vy end
 
         j.x=j.x+j.vx
         j.y=j.y+j.vy
@@ -167,29 +213,37 @@ function balls()
         if j.y>136 then j.y=0
         elseif j.y<0 then j.y=136
         end
-        renderspr(352, j.x, j.y, 2, 2)
+        renderspr(352, j.x, j.y, 2, 2, 0)
         
+        if RectIsct({x=p.x, y=p.y, w=8, h=8}, {x=j.x, y=j.y, w=16, h=16}) then eject(j.x, j.y) end
+
     end
 end
 
-function renderspr(s, x, y, sx, sy)
+function eject(x, y)
+    local stren = 1.5
+    p.vx = (p.x+4-x-8)*stren
+    p.vy = (p.y+4-y-8)*stren
+end
+
+function renderspr(s, x, y, sx, sy, col)
     local cutx
     local cuty
     if x+(8*sx)>240 then cutx=true end
     if y+(sy*8)>136 then cuty=true end
     if cutx and cuty then
-        spr(s, x, y, -1, 1, 0, 0,sx, sy)
-        spr(s,x, -136+y, -1, 1, 0, 0,sx, sy)
-        spr(s, x-240, y, -1, 1, 0, 0,sx, sy)
-        spr(s,x-240, -136+y, -1, 1, 0, 0,sx, sy)
+        spr(s, x, y, col, 1, 0, 0,sx, sy)
+        spr(s,x, -136+y,col, 1, 0, 0,sx, sy)
+        spr(s, x-240, y, col, 1, 0, 0,sx, sy)
+        spr(s,x-240, -136+y, col, 1, 0, 0,sx, sy)
     elseif cutx then
-        spr(s,x, y, -1, 1, 0, 0,sx, sy)
-        spr(s,x-240, y, -1, 1, 0, 0,sx, sy)
+        spr(s,x, y,col, 1, 0, 0,sx, sy)
+        spr(s,x-240, y, col, 1, 0, 0,sx, sy)
     elseif cuty then
-        spr(s,x, y, -1, 1, 0, 0,sx, sy)
-        spr(s,x, -136+y, -1, 1, 0, 0,sx, sy)
+        spr(s,x, y, col, 1, 0, 0,sx, sy)
+        spr(s,x, -136+y, col, 1, 0, 0,sx, sy)
     else
-        spr(s,x, y, -1, 1, 0, 0,sx, sy)
+        spr(s,x, y, col, 1, 0, 0,sx, sy)
     end
 end
 
@@ -258,6 +312,45 @@ function makemap()
     end )
 end
 
+function renderbr()
+    for i,j in pairs(br) do
+        spr(j.id,j.x, j.y, -1)
+    end
+end
+
+function checkcoll()
+    local x=p.x
+    local y=p.y
+    local cr = GetPlrCr()
+
+    local x1=x+cr.x
+    local y1=y+cr.y
+    local x2=x1+cr.w-1
+    local y2=y1+cr.h-1
+
+    local startC=x1//8
+    local endC=x2//8
+    local startR=y1//8
+    local endR=y2//8
+
+    for c=startC,endC do
+    for r=startR,endR do
+        local tile=maprev(c,r)
+        if tile==36 and not(tab.posbreak[c*30+r]) then brbreak(c, r)
+        elseif tile==20 then print(tab.breaker .. " remains.")
+        elseif tile==17 then p.vy=p.vy-10 
+        end
+    end
+    end
+end
+
+function brbreak(c, r)
+    table.insert(br, {x=c*8,y=r*8,id=271})
+    tab.posbreak[c*30+r]=true
+    tab.breaker=tab.breaker-1
+end
+
+
 function renderp()
     local cutx
     local cuty
@@ -294,6 +387,7 @@ function GetPlrCr()
     return {x=0,y=0,w=8,h=8}
 end
 
+
 function CanMoveEx(x, y, cr, dy)
     local x1=x+cr.x
     local y1=y+cr.y
@@ -307,17 +401,16 @@ function CanMoveEx(x, y, cr, dy)
 
     for c=startC,endC do
     for r=startR,endR do
-        trace("r") trace(c) trace(r)
         local sol=GetTileSol(maprev(c,r))
         if sol==SOL.FULL then return false 
         elseif sol==SOL.HALF then
-            if (y+cr.y)%8>4 then p.vy=p.vy-3 return false end
+            if y+cr.h>r*8+4 then return false end
         end
     end
     end
     return true
 end
-
+--(y+cr.h)%8>4 or (y+cr.h)%8==0
 SOL={
     NOT=0,  -- not solid
     HALF=1, -- midtiles
@@ -331,9 +424,10 @@ end
 LVL_LEN=240
 
 function maprev(x, y)
-    if x==30 then x=0 end
+    if x==-1 then x=29
+    elseif x==30 then x=0 end
     if x>14 then x=29-x end
-    return mget(x, y)
+    return mget(x+game.part*15+game.t*30, y)
 end
 
 function LvlTile(c,r)
@@ -355,24 +449,45 @@ function trymoveby(dx,dy)
     return false
    end
 
+bumped=0
+wasground=0
+
 function updateplr()
     local oldx=p.x
     local oldy=p.y
 
+    local vel = 2
+
+    local drag = 1
+    --trace("s")
+    --trace(p.vy)
+    if not trymoveby(p.vx, p.vy) then bumped = 3 p.vy=0 p.vx=0 end
+    --if p.vx>-drag and p.vx<drag then p.vx=0 end
+    if p.vx ~=0 then p.vx = p.vx +sign(p.vx)*-drag end
+    --if p.vy>-drag and p.vy<drag then p.vy=0 end
+    if p.vy ~=0 then p.vy = p.vy +sign(p.vy)*-drag end
     
-    if p.vy<0 then if(trymoveby(0, p.vy)) then p.vy=p.vy+0.3 else p.vy=0 end end
-
-    if p.jump==0 and not IsOnGround() then
-        if trymoveby(0, 3) then oldx=oldx else trymoveby(0, 1) end
+    --if p.vy<0 then if(trymoveby(0, p.vy)) then p.vy=p.vy+0.2 else p.vy=0 end end
+    print(p.vy, 0, 8)
+    print(p.vx)
+    --trace(p.vy)
+    if p.jump==0 and not IsOnGround() and bumped<1 then
+        if not trymoveby(0, vel+1) then trymoveby(0, 1) end
+    elseif bumped>0 then bumped=bumped-1
     end
-
+    --trace(p.vy)
     local dx=0
     local dy=0
-    if btn(2) then dx=-2 elseif btn(3) then dx=2 end
-    trymoveby(dx, dy)
-
+    if btn(2) then dx=-vel elseif btn(3) then dx=vel  end
+    if not trymoveby(dx, 0) then trymoveby(sign(dx), 0) end
+    --trace(p.vy)
     p.grounded=IsOnGround()
-    if btnp(4) and p.grounded then
+    --jump saver
+    if wasground>0 then wasground=wasground-1 end
+    if p.grounded then wasground=5 end
+    --trace(p.vy)
+    
+    if btnp(4) and (p.grounded or wasground~=0) then
         p.jump=1
         p.jumpseq=JUMP_DY
     end
@@ -381,6 +496,8 @@ function updateplr()
     elseif p.jump>0 then
         local ok=trymoveby(0, p.jumpseq[p.jump])
         p.jump=ok and p.jump+1 or 0
+        --jump helper
+        if not ok then p.vy=0 bumped = 3 p.y= p.y//8*8 end
     end
 
     p.dx=p.dx-oldx
@@ -445,3 +562,17 @@ function Iif(cond,t,f)
 function IsOnGround()
 return not CanMove(p.x,p.y+1)
 end
+
+function RectIsct(r1,r2)
+    return
+     r1.x+r1.w>r2.x and r2.x+r2.w>r1.x and
+     r1.y+r1.h>r2.y and r2.y+r2.h>r1.y
+   end
+
+function RectXLate(r,dx,dy)
+return {x=r.x+dx,y=r.y+dy,w=r.w,h=r.h}
+end
+
+function sign(h)
+    if h>=0 then return 1 else return -1 end
+    end
