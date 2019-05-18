@@ -32,7 +32,33 @@ function spawnplayer()
             if mget(i,j) == 36 then tab.breaker=tab.breaker+2 tab.inbreaker=tab.inbreaker+2 end
         end
     end
+    if #ball<=tl(game.numdone) then table.insert(ball, {
+        x=nposball(),
+        y=0,
+        vx=0,
+        vy=1
+    }) end
 end
+
+function nposball()
+    local done=false
+    while not done do
+        x=math.random(0, 240)
+        done=true
+        for i,j in pairs(ball) do
+            if RectIsct({x=x,y=0,w=16,h=16},{x=j.x, y=j.y,w=16,h=16}) then done=false end
+        end
+    end
+    return x
+end
+
+function tl(T)
+    local count = 0
+    for _ in pairs(T) do count = count + 1 end
+    return count
+end
+
+
 JUMP_DY={-3,-3,-3,-3,-2,-2,-2,-2,
   -1,-1,0,0,0,0,0}
 function init()
@@ -56,7 +82,7 @@ function init()
         part=1,
         coldone = {},
         ccol = 14,
-        tdone = {}
+        numdone = {}
     }
     tab={
         breaker=0,
@@ -64,7 +90,6 @@ function init()
         posbreak={}
     }
     game["cin"] = peek(0x03FC0 + 0x3*game.ccol)
-    spawnplayer()
     ball = {
         {
             x=math.random(0, 240),
@@ -73,6 +98,8 @@ function init()
             vy=1
         }
     }
+    
+    spawnplayer()
 end
 
 function UpdatePlayer()
@@ -126,7 +153,9 @@ function TIC()
     
     cls()
     makemap()
+    
     local speedlight = 2
+    --[[
     local temp = pos2map(p.x, p.y)
     if mget(temp[1], temp[2])==20 or mget(temp[1]+lor(), temp[2])==20 then
         p.tp = true
@@ -139,11 +168,12 @@ function TIC()
         local val = peek(0x03FC0 + 0x3*game.ccol)
         if val>148-speedlight*2 then poke(0x03FC0 + 0x3*game.ccol, val-speedlight/10) end
     end
-    
+    ]]
     updateplr()
     
     progress()
     if peek(0x03FC0 + 0x3*game.ccol)>255-speedlight-1 then print("Ready to teleport") end
+    if tab.breaker==0 and not game.numdone[game.t*2+game.part+1] then game.numdone[game.t*2+game.part+1]=true end
     
     renderbr()
     renderp()
@@ -158,8 +188,25 @@ function TIC()
     --if t%60%2==0 then floatest() end
 end
 
+function teleporter(bol)
+    local speedlight = 2
+    if bol then
+        local val = peek(0x03FC0 + 0x3*game.ccol)
+        if val<255-speedlight and val<255-tab.breaker*((255-game.cin)/tab.inbreaker) then poke(0x03FC0 + 0x3*game.ccol, val+speedlight)
+        elseif val<255-speedlight then print(tab.breaker .. " remains",0, 130) elseif val>255-speedlight-1 then print("Ready to teleport") p.tp=true return
+        end
+        p.tp=false
+    else 
+        p.tp=false
+        local val = peek(0x03FC0 + 0x3*game.ccol)
+        if val>148-speedlight*2 then poke(0x03FC0 + 0x3*game.ccol, val-speedlight/10) end
+    end
+end
+
+
+
 function respawn(obj)
-    obj.x = math.random(0, 240)
+    obj.x = nposball()
     obj.y = 0
 end
 
@@ -253,8 +300,8 @@ end
 
 function rooms()
     for i=1,9 do
-        if game.tdone[i] then spr(463+i, 240-10*8+i*8, 128, 0)
-        elseif i == game.t*2+game.part + 1 then spr(479+i, 240-10*8+i*8, 128, 0)
+        if i == game.t*2+game.part + 1 then spr(479+i, 240-10*8+i*8, 128, 0)
+        elseif game.numdone[i] then spr(463+i, 240-10*8+i*8, 128, 0)
         else spr(495+i, 240-10*8+i*8, 128, 0) end
     end
 end
@@ -333,15 +380,18 @@ function checkcoll()
     local startR=y1//8
     local endR=y2//8
 
+    local tdone=false
+
     for c=startC,endC do
     for r=startR,endR do
         local tile=maprev(c,r)
         if tile==36 and not(tab.posbreak[c*30+r]) then brbreak(c, r)
-        elseif tile==20 then print(tab.breaker .. " remains.")
-        elseif tile==17 then p.vy=p.vy-10 
+        elseif tile==17 then p.vy=p.vy-10 p.jump=0
+        elseif tdone==false and tile==20 then tdone=true
         end
     end
     end
+    teleporter(tdone)
 end
 
 function brbreak(c, r)
@@ -458,7 +508,7 @@ function updateplr()
 
     local vel = 2
 
-    local drag = 1
+    local drag = 0.5
     --trace("s")
     --trace(p.vy)
     if not trymoveby(p.vx, p.vy) then bumped = 3 p.vy=0 p.vx=0 end
