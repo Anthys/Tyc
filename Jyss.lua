@@ -4,8 +4,10 @@
 -- B Ball G Gripper L Lasor F Floater
 -- spawn one new every room finished
 ORDERS = {
-    [1]="BBBBBBBBB"
+    [1]="lllbbbbbb"
 }
+
+OBJECTS={["b"]="ball", ["f"]='floater', ["l"]="lasor"}
 
 
 function solid(x,y)
@@ -21,6 +23,10 @@ function solid(x,y)
     return solids[mget((x)//8+game.part*15+(game.t)*30,(y)//8)]
 end
 
+function SCN(s)
+    trace(s)
+end
+
 function spawnplayer()
     br={}
     tab.breaker = 0
@@ -32,24 +38,70 @@ function spawnplayer()
             if mget(i,j) == 36 then tab.breaker=tab.breaker+2 tab.inbreaker=tab.inbreaker+2 end
         end
     end
-    if #ball<=tl(game.numdone) then table.insert(ball, {
-        x=nposball(),
+    local l=tl(game.numdone)
+    if #ents<=l then
+        trace("yes") 
+        local o = string.sub(ORDERS[1], l, l)
+        o = OBJECTS[o]
+        table.insert(ents, {
+        n=o,
+        x=nposent(o),
         y=0,
         vx=0,
-        vy=1
+        vy=1,
+        t=0
     }) end
 end
 
-function nposball()
+diag={  x0=0,
+        y0=0,
+        x1=20,
+        y1=50
+}
+
+function draw_line(lin)
+    local dx=lin.x1-lin.x0
+    local dy=lin.y1-lin.y0
+    local D=2*dy-dx
+    local y=lin.y0
+    for x=lin.x0, lin.x1 do
+        rect(x, y, 1, 1, 1)
+        if D>0 then y=y+1 D=D-2*dx end
+        D=D+2*dy
+    end
+end
+
+function drawline(lin)
+    length_h=lin.x1-lin.x0
+    length_v=lin.y1-lin.y0
+    unit=length_v/length_h
+
+    for i=0,length_h do
+        for j=1,unit do
+            rect(lin.x0+i,lin.y0+1+j+(unit*i),1, 1, 1)
+        end
+    end
+    line(diag.x0+8, diag.y0, diag.x1+8, diag.y1, 1)
+end
+
+function nposent(en)
     local done=false
     while not done do
         x=math.random(0, 240)
         done=true
-        for i,j in pairs(ball) do
+        for i,j in pairs(getents(en)) do
             if RectIsct({x=x,y=0,w=16,h=16},{x=j.x, y=j.y,w=16,h=16}) then done=false end
         end
     end
     return x
+end
+
+function getents(en)
+    local f={}
+    for i,j in pairs(ents) do
+        if j.n==en then table.insert(f, j) end
+    end
+    return f
 end
 
 function tl(T)
@@ -98,6 +150,7 @@ function init()
             vy=1
         }
     }
+    ents={}
     
     spawnplayer()
 end
@@ -181,11 +234,13 @@ function TIC()
     rooms()
     timer()
     t=t+1
-    balls()
+    updents()
     checkcoll()
-    floatest()
-    lastest()
+    --floatest()
+    --lastest()
     --if t%60%2==0 then floatest() end
+    draw_line(diag)
+    if p.x==20 then p.vx=5 end
 end
 
 function teleporter(bol)
@@ -206,7 +261,7 @@ end
 
 
 function respawn(obj)
-    obj.x = nposball()
+    obj.x = nposent(obj.n)
     obj.y = 0
 end
 
@@ -217,25 +272,35 @@ fy=0
 
 l1=0
 l2=0
-function lastest()
-    if t%60==0 then l1=math.random(0, 240) l2=math.random(0, 240) end
-    if t%60>0 and t%60<30 and t%60%10>4 then rect(l1,0,3,3,8) rect(l2, 132, 3, 3, 8) end
-    if t%60>30 and t%60<50 then line(l1, 0, l2, 136,8) rect(l1,0,3,3,8) rect(l2, 132, 3, 3, 8) end
+
+function lastest(las)
+    las.t=las.t+1
+    local tt=las.t
+    if tt%60==0 then las.x=math.random(0, 240) las.vx=math.random(0, 240) end
+    if tt%60>0 and tt%60<30 and tt%60%10>4 then rect(las.x,0,3,3,8) rect(las.vx, 132, 3, 3, 8) end
+    if tt%60>30 and tt%60<50 then line(las.x, 0, las.vx, 136,8) rect(las.x,0,3,3,8) rect(las.vx, 132, 3, 3, 8) end
 end
 
-function floatest()
+
+function floatest(floa)
     local waves=4
-    thex=thex+0.5
-    if thex==240 then thex=0 end
-    local x = thex
+    floa.x=floa.x+0.5
+    if floa.x==240 then floa.x=0 end
+    local x = floa.x
     fy=math.sin(x/240*math.pi*waves)*(136//2)+136//2
     spr(358, x, fy, 0)
 end
 
-function balls()
-    for i,j in pairs(ball) do
+function updents()
+    for i,j in pairs(ents) do
+        if j.n=="ball" then balls(j)    
+        elseif j.n=="floater" then floatest(j)
+        elseif j.n=="lasor" then lastest(j) end
+    end
+end
 
-        --[[
+function balls(j)
+    --[[
         if solid(j.x+j.vx,j.y+j.vy) or solid(j.x+7+j.vx,j.y+j.vy) or solid(j.x+j.vx,j.y+j.vy) or solid(j.x+7+j.vx,j.y+7+j.vy) then
             j.vx=-j.vx
         end
@@ -264,7 +329,7 @@ function balls()
         
         if RectIsct({x=p.x, y=p.y, w=8, h=8}, {x=j.x, y=j.y, w=16, h=16}) then eject(j.x, j.y) end
 
-    end
+    
 end
 
 function eject(x, y)
@@ -518,8 +583,8 @@ function updateplr()
     if p.vy ~=0 then p.vy = p.vy +sign(p.vy)*-drag end
     
     --if p.vy<0 then if(trymoveby(0, p.vy)) then p.vy=p.vy+0.2 else p.vy=0 end end
-    print(p.vy, 0, 8)
-    print(p.vx)
+    --print(p.vy, 0, 8)
+    --print(p.vx)
     --trace(p.vy)
     if p.jump==0 and not IsOnGround() and bumped<1 then
         if not trymoveby(0, vel+1) then trymoveby(0, 1) end
