@@ -1,10 +1,13 @@
---Jyss.lua
+-- title: Jyss
+-- author: Anthys
+-- desc: Platformer
+-- script: lua
 
 
 -- B Ball G Gripper L Lasor F Floater
 -- spawn one new every room finished
 ORDERS = {
-    [1]="lllbbbbbb"
+    [1]="bbbbbbbbb"
 }
 
 OBJECTS={["b"]="ball", ["f"]='floater', ["l"]="lasor"}
@@ -23,8 +26,40 @@ function solid(x,y)
     return solids[mget((x)//8+game.part*15+(game.t)*30,(y)//8)]
 end
 
-function SCN(s)
-    trace(s)
+function perpDot(x1,y1,x2,y2)
+    return x1*y2-y1*x2
+   end
+   
+function collisionLineRect(lx1,ly1,lx2,ly2,rx1,ry1,rx2,ry2)
+    --debug visualization
+        line(lx1,ly1,lx2,ly2,15)
+
+    --accounts for endpoints; remove for infinite lines
+    if math.max(rx1,rx2) < math.min(lx1,lx2) 
+            or math.min(rx1,rx2) > math.max(lx1,lx2)
+                    or math.max(ry1,ry2) < math.min(ly1,ly2) 
+            or math.min(ry1,ry2) > math.max(ly1,ly2)
+        then return false end
+
+    p1_above = perpDot(lx2-lx1,ly2-ly1,rx1-lx1,ry1-ly1) > 0
+    p2_above = perpDot(lx2-lx1,ly2-ly1,rx2-lx1,ry1-ly1) > 0
+    p3_above = perpDot(lx2-lx1,ly2-ly1,rx1-lx1,ry2-ly1) > 0
+    p4_above = perpDot(lx2-lx1,ly2-ly1,rx2-lx1,ry2-ly1) > 0
+    
+    --debug visualization
+    --pix(rx1,ry1,p1_above and 11 or 6)
+    --pix(rx2,ry1,p2_above and 11 or 6)
+    --pix(rx1,ry2,p3_above and 11 or 6)
+    --pix(rx2,ry2,p4_above and 11 or 6)
+    
+    if p1_above and p2_above and p3_above and p4_above then
+    return false
+    elseif not p1_above and not p2_above 
+            and not p3_above and not p4_above then
+    return false
+    else
+    return true
+    end
 end
 
 function spawnplayer()
@@ -39,18 +74,26 @@ function spawnplayer()
         end
     end
     local l=tl(game.numdone)
+    if l==9 then state=4 table.insert(game.coldone, game.ccol) return true end
     if #ents<=l then
-        trace("yes") 
         local o = string.sub(ORDERS[1], l, l)
         o = OBJECTS[o]
+        local p = nposent(o)
         table.insert(ents, {
         n=o,
-        x=nposent(o),
-        y=0,
-        vx=0,
-        vy=1,
-        t=0
+        x=p.x,
+        y=p.y,
+        vx=math.random(0, 1),
+        t=0,
     }) end
+    local n = #ents
+    local ra = math.random(0, 2)
+    if ra==0 then ents[n].vx=0 ents[n].vy=mop() elseif ra==1 then ents[n].vx=mop() ents[n].vy=0 else ents[n].vx=mop() ents[n].vy=mop() end
+    --if ents[n].vx==1 then ents[n].vy=0 else ents[n].vy=1 end
+end
+
+function mop()
+    if math.random(0,1)==0 then return -1 else return 1 end
 end
 
 diag={  x0=0,
@@ -59,41 +102,17 @@ diag={  x0=0,
         y1=50
 }
 
-function draw_line(lin)
-    local dx=lin.x1-lin.x0
-    local dy=lin.y1-lin.y0
-    local D=2*dy-dx
-    local y=lin.y0
-    for x=lin.x0, lin.x1 do
-        rect(x, y, 1, 1, 1)
-        if D>0 then y=y+1 D=D-2*dx end
-        D=D+2*dy
-    end
-end
-
-function drawline(lin)
-    length_h=lin.x1-lin.x0
-    length_v=lin.y1-lin.y0
-    unit=length_v/length_h
-
-    for i=0,length_h do
-        for j=1,unit do
-            rect(lin.x0+i,lin.y0+1+j+(unit*i),1, 1, 1)
-        end
-    end
-    line(diag.x0+8, diag.y0, diag.x1+8, diag.y1, 1)
-end
-
 function nposent(en)
     local done=false
     while not done do
         x=math.random(0, 240)
+        y=math.random(0, 136)
         done=true
         for i,j in pairs(getents(en)) do
             if RectIsct({x=x,y=0,w=16,h=16},{x=j.x, y=j.y,w=16,h=16}) then done=false end
         end
     end
-    return x
+    return {x=x, y=y}
 end
 
 function getents(en)
@@ -106,12 +125,12 @@ end
 
 function tl(T)
     local count = 0
-    for _ in pairs(T) do count = count + 1 end
+    for i,j in pairs(T) do if j then count = count + 1 end end
     return count
 end
 
 
-JUMP_DY={-3,-3,-3,-3,-2,-2,-2,-2,
+JUMP_DY={-3,-3,-3,-3,-2,-2,-2,-2,-2,
   -1,-1,0,0,0,0,0}
 function init()
     solids={[1]=true,[17]=true}
@@ -131,10 +150,11 @@ function init()
     }
     game={
         t=0,
-        part=1,
+        part=0,
         coldone = {},
         ccol = 14,
-        numdone = {}
+        numdone = {},
+        t0=0
     }
     tab={
         breaker=0,
@@ -150,6 +170,7 @@ function init()
             vy=1
         }
     }
+
     ents={}
     
     spawnplayer()
@@ -163,7 +184,9 @@ end
 
 
 init()
-function TIC()
+
+
+function maintic()
     local env = 7
 
     --[[
@@ -226,21 +249,27 @@ function TIC()
     
     progress()
     if peek(0x03FC0 + 0x3*game.ccol)>255-speedlight-1 then print("Ready to teleport") end
-    if tab.breaker==0 and not game.numdone[game.t*2+game.part+1] then game.numdone[game.t*2+game.part+1]=true end
+    if tab.breaker==0 and not game.numdone[(game.t-game.t0)*2+game.part+1] then game.numdone[(game.t-game.t0)*2+game.part+1]=true end
     
     renderbr()
     renderp()
     checkinput()
     rooms()
-    timer()
-    t=t+1
+    --timer()
     updents()
     checkcoll()
     --floatest()
     --lastest()
     --if t%60%2==0 then floatest() end
-    draw_line(diag)
-    if p.x==20 then p.vx=5 end
+end
+
+state = 1
+
+ST={[1]="startic",[2]= "menutic", [3]="maintic", [4]="finishtic"}
+
+function TIC()
+    _G[ST[state]]()
+    t=t+1
 end
 
 function teleporter(bol)
@@ -261,8 +290,9 @@ end
 
 
 function respawn(obj)
-    obj.x = nposent(obj.n)
-    obj.y = 0
+    local p = nposent(obj.n)
+    obj.x = p.x
+    obj.y = p.y
 end
 
 thex=0
@@ -278,7 +308,10 @@ function lastest(las)
     local tt=las.t
     if tt%60==0 then las.x=math.random(0, 240) las.vx=math.random(0, 240) end
     if tt%60>0 and tt%60<30 and tt%60%10>4 then rect(las.x,0,3,3,8) rect(las.vx, 132, 3, 3, 8) end
-    if tt%60>30 and tt%60<50 then line(las.x, 0, las.vx, 136,8) rect(las.x,0,3,3,8) rect(las.vx, 132, 3, 3, 8) end
+    if tt%60>30 and tt%60<50 then 
+        if collisionLineRect(las.x,0,las.vx,136,p.x,p.y,p.x+7,p.y+7) then
+        p.vx=20
+        end rect(las.x,0,3,3,8) rect(las.vx, 132, 3, 3, 8) end
 end
 
 
@@ -288,7 +321,9 @@ function floatest(floa)
     if floa.x==240 then floa.x=0 end
     local x = floa.x
     fy=math.sin(x/240*math.pi*waves)*(136//2)+136//2
+    floa.y=fy
     spr(358, x, fy, 0)
+    if RectIsct({x=p.x, y=p.y, w=8, h=8}, {x=floa.x, y=floa.y, w=8, h=8}) then eject(floa.x, floa.y) end
 end
 
 function updents()
@@ -314,7 +349,7 @@ function balls(j)
         end   
         ]]
         if not CanMoveEx(j.x, j.y, {x=0,y=0,w=16,h=16},0) then respawn(j) end
-        if not CanMoveEx(j.x+j.vx, j.y+j.vy, {x=0,y=0,w=16,h=16},0) then j.vy=-j.vy end
+        if not CanMoveEx(j.x+j.vx, j.y+j.vy, {x=0,y=0,w=16,h=16},0) then j.vy=-j.vy j.vx=-j.vx end
 
         j.x=j.x+j.vx
         j.y=j.y+j.vy
@@ -405,10 +440,16 @@ end
 
 function checkinput()
     if p.tp then
-    if key(28) then game.t = 0 game.part = 0 spawnplayer()
-    elseif key(29) then game.t = 0 game.part = 1 spawnplayer()
-    elseif key(30) then game.t = 1 game.part = 0 spawnplayer()
-    elseif key(31) then game.t = 1 game.part = 1 spawnplayer()
+        local t0=game.t0
+    if key(28) then game.t = t0 game.part = 0 spawnplayer()
+    elseif key(29) then game.t = t0 game.part = 1 spawnplayer()
+    elseif key(30) then game.t = t0+1 game.part = 0 spawnplayer()
+    elseif key(31) then game.t = t0+1 game.part = 1 spawnplayer()
+    elseif key(32) then game.t = t0+2 game.part = 0 spawnplayer()
+    elseif key(33) then game.t = t0+2 game.part = 1 spawnplayer()
+    elseif key(34) then game.t = t0+3 game.part = 0 spawnplayer()
+    elseif key(35) then game.t = t0+3 game.part = 1 spawnplayer()
+    elseif key(36) then game.t = t0+4 game.part = 0 spawnplayer()
     end
     end
     if key(32) then trace('j')
@@ -542,6 +583,7 @@ function maprev(x, y)
     if x==-1 then x=29
     elseif x==30 then x=0 end
     if x>14 then x=29-x end
+    if y>16 then y=0 end
     return mget(x+game.part*15+game.t*30, y)
 end
 
@@ -576,7 +618,7 @@ function updateplr()
     local drag = 0.5
     --trace("s")
     --trace(p.vy)
-    if not trymoveby(p.vx, p.vy) then bumped = 3 p.vy=0 p.vx=0 end
+    if not trymoveby(p.vx, p.vy) then if not trymoveby(p.vx/2, p.vy/2) then bumped = 3 p.vy=0 p.vx=0 end end
     --if p.vx>-drag and p.vx<drag then p.vx=0 end
     if p.vx ~=0 then p.vx = p.vx +sign(p.vx)*-drag end
     --if p.vy>-drag and p.vy<drag then p.vy=0 end
@@ -691,3 +733,96 @@ end
 function sign(h)
     if h>=0 then return 1 else return -1 end
     end
+
+function startic()
+    cls()
+    local string="Press Enter"
+    print("Jyss", (240-192)//2, (136-60)//2+5, 2, false, 8)
+    if t%60<30 then print(string,120-10,82+5) end
+    if keyp(50) then state=2 end
+end
+
+
+MENU={[87]={30, 50, 2}, [89]={80, 20, 1}, [91]={85, 90, 3}, [93]={160, 26, 4}, [117]={150, 80, 5}}
+my=0
+
+function menutic()
+    local x,y,p=mouse()
+    cls(1)
+    for i, v in pairs(MENU) do
+        spr(i, v[1], v[2], 0, 2, false, false, 2, 2)
+        if x>v[1] and x<v[1]+16*2 and y>v[2] and y<v[2]+16*2 then rectb(v[1]-2,v[2]-2,32+4,32+4,9) 
+        if p then state=3 game.t0=(v[3]-1)*8 game.t=game.t0 spawnplayer() end
+        end
+    end
+end
+
+
+
+tt=0
+altend = false
+chaos=0
+--[[
+--debug
+chaos=0
+tt=0
+
+state=4
+table.insert(game.coldone, game.ccol)
+
+
+table.insert(game.coldone, 11)
+table.insert(game.coldone, 10)
+table.insert(game.coldone, 9)
+table.insert(game.coldone, 8)
+table.insert(game.coldone, 7)
+]]
+function finishtic()
+    tt=tt+1
+    if chaos==0 then
+        cls(0)
+        local l=#game.coldone
+        local s=0
+        local coltab={}
+        local turn=tt//60
+        if turn>l then 
+            turn=l
+            if tt%130<80 then print("Press any key to continue", 50, 130)
+            end
+            if keyp() then state=2 end
+            if l>4 then chaos=1 tt=0
+        end end
+        for i=1,turn do
+            table.insert(coltab,game.coldone[i])
+        end
+        if altend then l=#coltab end
+        for j, i in pairs(coltab) do
+            print("Illuminated", 30, 50+((s-l/2+1)*16), i, false, 3)
+            s=s+1
+        end
+    elseif chaos==1 and tt%60%5==0 then 
+        if tt//60<8 then
+            print("Illuminated", math.random(-50,240), math.random(-10,136), rlist(game.coldone), rlist({true, false}), math.random(4))
+            if tt//60>=6 then for i=0,math.random(0, 5) do
+                spr(rlist({1, 2, 17}), math.random(240), math.random(136))
+                rect(math.random(240),math.random(136),math.random(0, 30),math.random(0, 30),0)
+            end end
+        elseif tt//60>=8 and tt//60<8+16 then 
+            local text= 'What have you done, child?' 
+            if tt//60<8+13 or (tt%2==1 and tt//60<8+15) or (tt%4==0)  then cls(math.random(0, 15)) else cls(0) end
+            for i=0,math.random(0, 5) do
+                spr(rlist({1, 2, 17}), math.random(240), math.random(136))
+                rect(math.random(240),math.random(136),math.random(0, 30),math.random(0, 30),0)   
+            end
+            if tt>=10 then print(string.sub(text,0, math.min(math.max(tt//30-10*2, 0), string.len(text))),50, 60, 0) end
+        elseif tt//60>=8+16 and tt//60<8+16+4 then cls(0)
+        elseif tt//60>=8+16+4 then exit()
+        end
+    end
+end
+
+function rlist(l)
+    return l[math.random(#l)]
+end
+
+
