@@ -74,7 +74,7 @@ function spawnplayer()
         end
     end
     local l=tl(game.numdone)
-    if l==9 then state=4 table.insert(game.coldone, game.ccol) return true end
+    if l==9 then state=4 table.insert(game.coldone, game.ccol, true) return true end
     if #ents<=l then
         local o = string.sub(ORDERS[1], l, l)
         o = OBJECTS[o]
@@ -128,6 +128,8 @@ function tl(T)
     for i,j in pairs(T) do if j then count = count + 1 end end
     return count
 end
+
+
 
 
 JUMP_DY={-3,-3,-3,-3,-2,-2,-2,-2,-2,
@@ -248,7 +250,7 @@ function maintic()
     updateplr()
     
     progress()
-    if peek(0x03FC0 + 0x3*game.ccol)>255-speedlight-1 then print("Ready to teleport") end
+    --if peek(0x03FC0 + 0x3*game.ccol)>255-speedlight-1 then print("Ready to teleport") end
     if tab.breaker==0 and not game.numdone[(game.t-game.t0)*2+game.part+1] then game.numdone[(game.t-game.t0)*2+game.part+1]=true end
     
     renderbr()
@@ -272,20 +274,7 @@ function TIC()
     t=t+1
 end
 
-function teleporter(bol)
-    local speedlight = 2
-    if bol then
-        local val = peek(0x03FC0 + 0x3*game.ccol)
-        if val<255-speedlight and val<255-tab.breaker*((255-game.cin)/tab.inbreaker) then poke(0x03FC0 + 0x3*game.ccol, val+speedlight)
-        elseif val<255-speedlight then print(tab.breaker .. " remains",0, 130) elseif val>255-speedlight-1 then print("Ready to teleport") p.tp=true return
-        end
-        p.tp=false
-    else 
-        p.tp=false
-        local val = peek(0x03FC0 + 0x3*game.ccol)
-        if val>148-speedlight*2 then poke(0x03FC0 + 0x3*game.ccol, val-speedlight/10) end
-    end
-end
+
 
 
 
@@ -406,11 +395,7 @@ function rooms()
     end
 end
 
-function progress()
-    local lenprogress = 80
-    local val = (peek(0x03FC0 + 0x3*game.ccol) - game.cin)/(255-game.cin)*lenprogress
-    rect(120-lenprogress//2, 130, val, 4, game.ccol)
-end
+
 
 function checkjump()
     --check jump and breaker
@@ -742,8 +727,8 @@ function startic()
     if keyp(50) then state=2 end
 end
 
-
-MENU={[87]={30, 50, 2}, [89]={80, 20, 1}, [91]={85, 90, 3}, [93]={160, 26, 4}, [117]={150, 80, 5}}
+-- [sprindx]={xpos, ypos, lineofmap(range), indxofcolor}
+MENU={[87]={30, 50, 2, 13}, [89]={80, 20, 1, 14}, [91]={85, 90, 3}, [93]={160, 26, 4}, [117]={150, 80, 5}}
 my=0
 
 function menutic()
@@ -752,13 +737,14 @@ function menutic()
     for i, v in pairs(MENU) do
         spr(i, v[1], v[2], 0, 2, false, false, 2, 2)
         if x>v[1] and x<v[1]+16*2 and y>v[2] and y<v[2]+16*2 then rectb(v[1]-2,v[2]-2,32+4,32+4,9) 
-        if p then state=3 game.t0=(v[3]-1)*8 game.t=game.t0 spawnplayer() end
+        if p and not game.coldone[v[4]] then state=3 game.t0=(v[3]-1)*8 game.t=game.t0 game.ccol=v[4] spawnplayer() elseif game.coldone[v[4]] then print("Illuminated", v[1]-12, v[2]+32+4, v[4]) end
         end
     end
 end
 
 
-
+--game.coldone={[14]=true, [13]=true, [12]=true, [11]=true, [10]=true}
+--state=4
 tt=0
 altend = false
 chaos=0
@@ -777,11 +763,26 @@ table.insert(game.coldone, 9)
 table.insert(game.coldone, 8)
 table.insert(game.coldone, 7)
 ]]
+
+function printlist(a)
+    trace("--")
+    for i,v in pairs(a) do
+        trace(i)
+        trace(v)
+    end
+end
+
+unordone={}
+
 function finishtic()
     tt=tt+1
+    if tt==1 then
+    for i,v in pairs(game.coldone) do
+        table.insert(unordone, i)
+    end end
     if chaos==0 then
         cls(0)
-        local l=#game.coldone
+        local l=tl(game.coldone)
         local s=0
         local coltab={}
         local turn=tt//60
@@ -793,7 +794,7 @@ function finishtic()
             if l>4 then chaos=1 tt=0
         end end
         for i=1,turn do
-            table.insert(coltab,game.coldone[i])
+            table.insert(coltab,unordone[i])
         end
         if altend then l=#coltab end
         for j, i in pairs(coltab) do
@@ -802,7 +803,7 @@ function finishtic()
         end
     elseif chaos==1 and tt%60%5==0 then 
         if tt//60<8 then
-            print("Illuminated", math.random(-50,240), math.random(-10,136), rlist(game.coldone), rlist({true, false}), math.random(4))
+            print("Illuminated", math.random(-50,240), math.random(-10,136), rlist(unordone), rlist({true, false}), math.random(4))
             if tt//60>=6 then for i=0,math.random(0, 5) do
                 spr(rlist({1, 2, 17}), math.random(240), math.random(136))
                 rect(math.random(240),math.random(136),math.random(0, 30),math.random(0, 30),0)
@@ -815,14 +816,111 @@ function finishtic()
                 rect(math.random(240),math.random(136),math.random(0, 30),math.random(0, 30),0)   
             end
             if tt>=10 then print(string.sub(text,0, math.min(math.max(tt//30-10*2, 0), string.len(text))),50, 60, 0) end
+            if tt//60>=8+15 then print(text, math.random(-50,240), math.random(-10,136), 0, rlist({true, false}), math.random(4)) end
         elseif tt//60>=8+16 and tt//60<8+16+4 then cls(0)
         elseif tt//60>=8+16+4 then exit()
         end
     end
 end
 
-function rlist(l)
-    return l[math.random(#l)]
+function rlist(ta)
+    return ta[math.random(#ta)]
 end
 
 
+--[[
+kj=0xF
+output = string.format("%x", kj)
+trace(tonumber(output, 16))
+trace(output)
+vall=peek(0x03FC0+0x3*15+1)
+trace(vall)
+trace(string.format("%x",vall))
+valll=tostring(vall)
+trace(valll)
+trace(tonumber(valll, 16))
+{0xFF, 0, 44}
+]]
+COLORS={
+    --[Index color]={{originR, originG, originB},{targetR, targetG, targetB}}
+    [14]={{0x8D, 44, 44}, {0xFF, 0xFF, 0xFF}},
+    [13]={{59, 50, 0x8D},{59, 0, 0xFF}}
+}
+
+function inccol(a)
+    trace("---")
+    if keyp(01) then printcolo() end
+    local alldone=0
+    local speedlight = 2
+    local indx=game.ccol
+    local prog=1
+    --a= false(go away from target) or true (go to target)
+    for i=1,3 do
+        local pre=COLORS[indx][1][i]
+        local last=COLORS[indx][2][i]
+        local dir = pre<last
+        local idir= Iif(dir, 1, -1)
+        local val = peek(0x03FC0 + 0x3*indx+i-1)
+        local pro = val<last
+        if a then
+            if infup(val, last-speedlight*idir, dir) and infup(val, last-idir*tab.breaker*(idir*(last-pre)/tab.inbreaker), dir) then poke(0x03FC0 + 0x3*indx+i-1, val+idir*speedlight)
+            --if ((val<last-speedlight and dir) or (val>last-speedlight and not dir)) and val<last-tab.breaker*((last-pre)/tab.inbreaker) then poke(0x03FC0 + 0x3*indx+i-1, val+speedlight)
+            elseif infup(val,last-speedlight*idir, dir) then print(tab.breaker .. " remains", 0, 130) 
+            elseif infup(val,last-(speedlight+1)*idir,not dir) then alldone=alldone+1
+            end
+        else
+            if infup(val,pre+idir*speedlight,not dir) then poke(0x03FC0 + 0x3*indx+i-1, val-idir*speedlight/10) end
+        end
+        if true then trace((val-pre)/(last-pre)) end
+        prog= math.min((val-pre)/(last-pre), prog)
+    end
+    progrex = prog
+    if alldone==3 then print('Ready to teleport') p.tp=true else p.tp = false end
+end
+
+progrex=0
+
+function newprogress()
+    local lenprogress = 80
+    local val = progrex*lenprogress
+    rect(120-lenprogress//2, 130, val, 4, game.ccol)
+end
+
+function progress()
+    newprogress()
+    --local lenprogress = 80
+    --local val = (peek(0x03FC0 + 0x3*game.ccol) - game.cin)/(255-game.cin)*lenprogress
+   -- rect(120-lenprogress//2, 130, val, 4, game.ccol)
+end
+
+function printcolo()
+    trace("--")
+    local indx=game.ccol
+    for i=1,3 do
+        trace(peek(0x03FC0 + 0x3*indx+i-1))
+    end
+end
+
+
+function infup(a, b, bool)
+    if bool then return a<b else return a>b end
+end
+
+--Have a palette slot reserved, for stages background. This slot will save the advancement of the level, as its illumination of the color. It will maybe used as background. Not to be confused with the color itself which reset to its origin value each part of the level.
+
+function teleporter(bol)
+    inccol(bol)
+    --[[
+    if bol then
+        local val = peek(0x03FC0 + 0x3*game.ccol)
+        if val<255-speedlight and val<255-tab.breaker*((255-game.cin)/tab.inbreaker) then poke(0x03FC0 + 0x3*game.ccol, val+speedlight)
+        elseif val<255-speedlight then print(tab.breaker .. " remains",0, 130) elseif val>255-speedlight-1 then print("Ready to teleport") p.tp=true return
+        end
+        p.tp=false
+    else 
+        p.tp=false
+        local val = peek(0x03FC0 + 0x3*game.ccol)
+        if val>148-speedlight*2 then poke(0x03FC0 + 0x3*game.ccol, val-speedlight/10) end
+    end
+    ]]
+end
