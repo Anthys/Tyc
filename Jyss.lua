@@ -7,7 +7,9 @@
 -- B Ball G Gripper L Lasor F Floater
 -- spawn one new every room finished
 ORDERS = {
-    [1]="bbbbbbbbb"
+    [1]="bbbbbbbbb",
+    [2]="lfbblfbbb",
+    [3]="ffbbflllb"
 }
 
 OBJECTS={["b"]="ball", ["f"]='floater', ["l"]="lasor"}
@@ -74,9 +76,9 @@ function spawnplayer()
         end
     end
     local l=tl(game.numdone)
-    if l==9 then state=4 table.insert(game.coldone, game.ccol, true) return true end
+    if l==9 then state=4 game.coldone[game.ccol]= true return true end
     if #ents<=l then
-        local o = string.sub(ORDERS[1], l, l)
+        local o = string.sub(game.ord, l, l)
         o = OBJECTS[o]
         local p = nposent(o)
         table.insert(ents, {
@@ -156,7 +158,8 @@ function init()
         coldone = {},
         ccol = 14,
         numdone = {},
-        t0=0
+        t0=0,
+        ord=""
     }
     tab={
         breaker=0,
@@ -263,6 +266,14 @@ function maintic()
     --floatest()
     --lastest()
     --if t%60%2==0 then floatest() end
+    if t%60==0 then cmult=(cmult)%8+1 for i=1,3 do poke(0x03FC0 + 0x3*4+i-1, mult[cmult][i]) end end
+end
+
+cmult=0
+mult={}
+mm=255//2
+for i=0,7 do
+    mult[i+1]={mm*(i%2),mm*(i//2%2),mm*(i//4%2)}
 end
 
 state = 1
@@ -564,12 +575,14 @@ end
 
 LVL_LEN=240
 
+
 function maprev(x, y)
+    if keyp(01) then trace(game.part) end
     if x==-1 then x=29
     elseif x==30 then x=0 end
     if x>14 then x=29-x end
     if y>16 then y=0 end
-    return mget(x+game.part*15+game.t*30, y)
+    return mget(x+game.part*15+(game.t%8)*30, y+(game.t0//8)*17)
 end
 
 function LvlTile(c,r)
@@ -727,9 +740,6 @@ function startic()
     if keyp(50) then state=2 end
 end
 
--- [sprindx]={xpos, ypos, lineofmap(range), indxofcolor}
-MENU={[87]={30, 50, 2, 13}, [89]={80, 20, 1, 14}, [91]={85, 90, 3}, [93]={160, 26, 4}, [117]={150, 80, 5}}
-my=0
 
 function menutic()
     local x,y,p=mouse()
@@ -737,7 +747,9 @@ function menutic()
     for i, v in pairs(MENU) do
         spr(i, v[1], v[2], 0, 2, false, false, 2, 2)
         if x>v[1] and x<v[1]+16*2 and y>v[2] and y<v[2]+16*2 then rectb(v[1]-2,v[2]-2,32+4,32+4,9) 
-        if p and not game.coldone[v[4]] then state=3 game.t0=(v[3]-1)*8 game.t=game.t0 game.ccol=v[4] spawnplayer() elseif game.coldone[v[4]] then print("Illuminated", v[1]-12, v[2]+32+4, v[4]) end
+        if p and not game.coldone[v[4]] then state=3 game.t0=(v[3]-1)*8 game.t=game.t0 game.ccol=v[4] game.numdone={} game.ord=rlist(ORDERS) for i=2,8 do
+            game.numdone[i]=true
+        end spawnplayer() elseif game.coldone[v[4]] then print("Illuminated", v[1]-12, v[2]+32+4, v[4]) end
         end
     end
 end
@@ -752,11 +764,13 @@ chaos=0
 --debug
 chaos=0
 tt=0
-
+]]
+--[[
 state=4
-table.insert(game.coldone, game.ccol)
-
-
+table.insert(game.coldone, 14)
+table.insert(game.coldone, 11)
+]]
+--[[
 table.insert(game.coldone, 11)
 table.insert(game.coldone, 10)
 table.insert(game.coldone, 9)
@@ -774,33 +788,49 @@ end
 
 unordone={}
 
+state=1
+game.coldone={[14]=false, [13]=false, [12]=false, [11]=false}
+
 function finishtic()
     tt=tt+1
     if tt==1 then
-    for i,v in pairs(game.coldone) do
-        table.insert(unordone, i)
+        unordone={}
+        for i,v in pairs(game.coldone) do
+            if v==true then table.insert(unordone, i) end
     end end
     if chaos==0 then
-        cls(0)
         local l=tl(game.coldone)
+        if l==3 and (tt>60*2.5 and tt<60*3) then chaos=chaos else cls(0) end
         local s=0
         local coltab={}
         local turn=tt//60
         if turn>l then 
             turn=l
-            if tt%130<80 then print("Press any key to continue", 50, 130)
+            if l==2 then print("Please stop", 52, 60) end
+            if tt%130<80 then if l~=4 then print("Press any key to continue", 50, 130) else print("STOP IT NOW", 90, 130) end
             end
-            if keyp() then state=2 end
+            if keyp() then 
+                tt=0 
+                if l~=2 then state=2 
+                elseif l==2 then chaos=0.2
+            end end
             if l>4 then chaos=1 tt=0
         end end
         for i=1,turn do
             table.insert(coltab,unordone[i])
         end
         if altend then l=#coltab end
-        for j, i in pairs(coltab) do
-            print("Illuminated", 30, 50+((s-l/2+1)*16), i, false, 3)
-            s=s+1
+        if l==3 and (tt>60*2.5 and tt<60*3) then
+            local tex="Illllllllllllllllllllllllll" print(string.sub(tex,0, (tt-60*2.5)//2), 30, 50+((2-l/2+1)*16), math.random(0,15), false, 3)
+        else 
+            for j, i in pairs(coltab) do
+                print("Illuminated", 30, 50+((s-l/2+1)*16), i, false, 3)
+                s=s+1
+              end
         end
+    elseif chaos==0.2 then
+        if tt<5 then cls(0) print("Please stop", 52, 60)
+        else tt=0 state=2 chaos=0 end
     elseif chaos==1 and tt%60%5==0 then 
         if tt//60<8 then
             print("Illuminated", math.random(-50,240), math.random(-10,136), rlist(unordone), rlist({true, false}), math.random(4))
@@ -841,19 +871,26 @@ trace(valll)
 trace(tonumber(valll, 16))
 {0xFF, 0, 44}
 ]]
+
+-- [sprindx]={xpos, ypos, lineofmap(range), indxofcolor}
+MENU={[87]={30, 50, 2, 14}, [89]={80, 20, 1, 10}, [91]={85, 90, 3, 12}, [93]={160, 26, 4, 13}, [117]={150, 80, 5, 11}}
+my=0
+
+
 COLORS={
     --[Index color]={{originR, originG, originB},{targetR, targetG, targetB}}
-    [14]={{0x8D, 44, 44}, {0xFF, 0xFF, 0xFF}},
-    [13]={{59, 50, 0x8D},{59, 0, 0xFF}}
+    [14]={{0x8D, 44, 44}, {0xFF, 0, 44}},
+    [13]={{55, 55, 75},{0xBE, 28, 0xFF}},
+    [12]={{71, 65, 59},{0xFF, 0xD2, 0}},
+    [11]={{24, 38, 0x1C}, {48, 0xDA, 0}},
+    [10]={{14, 34, 55}, {14, 55, 0xFA}},
 }
-
 function inccol(a)
-    trace("---")
-    if keyp(01) then printcolo() end
+    --trace("---")
     local alldone=0
     local speedlight = 2
     local indx=game.ccol
-    local prog=1
+    local prog= 1
     --a= false(go away from target) or true (go to target)
     for i=1,3 do
         local pre=COLORS[indx][1][i]
@@ -869,9 +906,9 @@ function inccol(a)
             elseif infup(val,last-(speedlight+1)*idir,not dir) then alldone=alldone+1
             end
         else
-            if infup(val,pre+idir*speedlight,not dir) then poke(0x03FC0 + 0x3*indx+i-1, val-idir*speedlight/10) end
+            if infup(val,pre+idir*speedlight,not dir) then poke(0x03FC0 + 0x3*indx+i-1, val-idir*(speedlight/speedlight)) end
         end
-        if true then trace((val-pre)/(last-pre)) end
+        --if true then trace((val-pre)/(last-pre)) end
         prog= math.min((val-pre)/(last-pre), prog)
     end
     progrex = prog
@@ -881,6 +918,8 @@ end
 progrex=0
 
 function newprogress()
+    
+    --if keyp(01) then printcolo() end
     local lenprogress = 80
     local val = progrex*lenprogress
     rect(120-lenprogress//2, 130, val, 4, game.ccol)
@@ -924,3 +963,4 @@ function teleporter(bol)
     end
     ]]
 end
+
