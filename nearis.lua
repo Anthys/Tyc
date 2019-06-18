@@ -122,6 +122,7 @@ function level()
   pry = p.y + 64
   cls()
   update_camera()
+  hider()
   update_player()
   rect(cam.x-120+8,cam.y-64+8,8,8,2)
   m.x, m.y, m.l, m.m, m.r = mouse()
@@ -140,7 +141,8 @@ function update_sight()
   if game.ac and m.l then
     if tile == 38 then mset(tx, ty, 44) mset(tx+1, ty, 45)
     elseif tile == 44 then mset(tx, ty, 38) mset(tx+1, ty, 39)
-    elseif tile == 241 then firestart(tx, ty) end
+    elseif tile == 241 then firestart(tx, ty) 
+    elseif tile == 84 then ents.tempor[tx*100+ty] = {60,{tx*8+1, ty*8-14, 281}, {tx*8+1, ty*8-6, 297}} end
     game.ac = false
   end
   if not m.l then game.ac = true end
@@ -158,6 +160,7 @@ end
 
 function try_move(x, y)
   local yesyes=true
+  if p.x+120+x<0 or p.y+64+y<0 then return end
   for yx=((prx+x-2)//8), ((prx+x)//8)+1 do
     for yy=((pry+y-2)//8), ((pry+y)//8)+1 do
     if is_full(yx, yy) then yesyes=false end
@@ -250,7 +253,7 @@ function update_camera()
   dx,dy=cam.x-120,cam.y-64
   cam.cx=cam.x/8+(cam.x%8==0 and 1 or 0)
   cam.cy=cam.y/8+(cam.y%8==0 and 1 or 0) end
-  map(15-cam.cx,8-cam.cy,31,18,(cam.x%8)-8,(cam.y%8)-8,0)
+  map(15-cam.cx,8-cam.cy,31,18,(cam.x%8)-8,(cam.y%8)-8,0,1)
   --rect(cam.x-120+yx*8, cam.y-64+yy*8, 2, 2, 12)
 end
 
@@ -259,14 +262,23 @@ function round(num, numDecimalPlaces)
   return math.floor(num * mult + 0.5) / mult
 end
 
-function update_ents()
+function hider()
   for k,l in pairs(ents.spawn) do
     if not game.n then spr(0, cam.x-120+l[1]*8, cam.y-64+l[2]*8) end end
+end
+
+function update_ents()
   for a,b in pairs(ents) do
     if a~="spawn" and a~="fireplaces" then 
+      if a=="tempor" then
+        for i,j in pairs(b) do
+          if j[1]<0 then ents.tempor[i]=nil else j[1]=j[1]-1 for k,l in pairs(j) do if k~=1 then spr(l[3], cam.x-120+l[1], cam.y-64+l[2], 0) end end end
+        end
+      else
       for i,j in pairs(b) do
-      spr(j[3], cam.x-120+j[1], cam.y-64+j[2], 0) print(j[1], 10, 10) end 
-      end
+      spr(j[3], cam.x-120+j[1], cam.y-64+j[2], 0) print(j[1], 10, 10) 
+      end end 
+    end
   end
 end
 
@@ -280,6 +292,7 @@ function init_lvl()
   p={x=0,y=0,spr=496}
   ents.spawn={}
   ents.fireplaces={}
+  ents.tempor={}
   for i,j in pairs(LVL[game.lvl].al) do
     for x=j%8*30,j%8*30+30 do
       for y=j//8*17,j//8*17+17 do
