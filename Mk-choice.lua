@@ -19,11 +19,11 @@ A={
   [17]={"Understandable.", ["t"]={50}},
   [18]={{{"I will have to ask you a few questions,", "if you don't mind."}}, ["t"]={50}},
   [19]={"That's just the protocol.", ["t"]={50}},
-  [20]={"What is your name?", {{"I do not ","remember."}, [NOTHINGROUTE]}, {"Candace."}},
+  [20]={"What is your name?", {{"I do not ","remember."}, 999}, {"Candace."}},
   --CandaceRoute
   [21]={"Oh, how funny, that's mine too!",["t"]={50}},
   [22]={"Nice to meet you, Candace.", ["t"]={50}},
-  [23]={"So, do you have any memory about the incident?"}  
+  [23]={"So, do you have any memory about the incident?"}
 }
 DEF_WAIT = 60
 DEF_TXT_S = 3
