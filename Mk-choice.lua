@@ -10,7 +10,20 @@ A={
   [8]={"Let's see if I can help you with that.", ['t']={50}},
   [9]={"INITIALIZING INPUT"},
   [10]={"Here.", ["t"]={50}},
-  [11]={{{"I think that's slighly better,","don't you agree?"}},{"Yes"}, {"No"}}
+  [11]={{{"I think that's slighly better,","don't you agree?"}},{"Yes"}, {"No", 13}},
+  [12]={"Cool.",["t"]={50, 14}},
+  [13]={"Don't be fussy, I'm only doing that for you.", ["t"]={50}},
+  [14]={"Right.",["t"]={50}},
+  [15]={{"So, how do you feel right now?"}, {"Fine."}, {{"I'm not feeling"," anything."}, 17}},
+  [16]={"Nice to hear that.", ["t"]={50, 18}},
+  [17]={"Understandable.", ["t"]={50}},
+  [18]={{{"I will have to ask you a few questions,", "if you don't mind."}}, ["t"]={50}},
+  [19]={"That's just the protocol.", ["t"]={50}},
+  [20]={"What is your name?", {{"I do not ","remember."}, [NOTHINGROUTE]}, {"Candace."}},
+  --CandaceRoute
+  [21]={"Oh, how funny, that's mine too!",["t"]={50}},
+  [22]={"Nice to meet you, Candace.", ["t"]={50}},
+  [23]={"So, do you have any memory about the incident?"}  
 }
 DEF_WAIT = 60
 DEF_TXT_S = 3
@@ -28,7 +41,7 @@ wait_t=0
 can_pass=true
 
 zc=0
-cur_i = 10
+cur_i = 18
 cur_q = A[cur_i]
 
 function TIC()
@@ -58,20 +71,27 @@ end
 function show_choices()
   for i,j in pairs(A[cur_i]) do
     if i~=1 then
-      if i==2 then print(j[1], 0, 64)
-      elseif i==3 then print(j[1], 240-print(j[1], -100, -100), 64)
+      if i==2 then 
+        if type(j[1])=="table" then for k,l in pairs(j[1]) do
+          print(l, 0, 120-#j*9+k*9-9) end
+        else print(j[1], 0, 120) end --line(20, 50, 20, 80, 15)
+      elseif i==3 then
+        if type(j[1])=="table" then for k,l in pairs(j[1]) do
+          print(l, 240-print(l, -100, -100), 120-#j*9+k*9-9) end
+        else print(j[1], 240-print(j[1], -100, -100), 120) end -- line(225, 50, 225, 80, 15)
       elseif i==4 then print(j[1], 120-(print(j[1], -100, -100)//2), 128) 
       elseif i==5 then print(j[1], 120-(print(j[1], -100, -100)//2), 2) end
     end
   end
   for i=2,3 do
-    if btnp(i) and A[cur_i][i] and A[cur_i][i][2] then nexq(A[cur_i][i][2]) end
+    if btnp(i) then
+      if A[cur_i][i] and A[cur_i][i][2] then nexq(A[cur_i][i][2])
+      elseif A[cur_i][i] then nexq(cur_i+1) end
+    end
   end
   for i=0,1 do
     if btnp(i) and A[cur_i][5-i] and A[cur_i][5-i][2] then nexq(A[cur_i][5-i][2]) end
   end
-  
-  if cur_i>9 then line(20, 50, 20, 80, 15) line(225, 50, 225, 80, 15) end
 end
 
 function nexq(indx)
