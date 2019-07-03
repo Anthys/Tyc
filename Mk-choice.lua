@@ -23,7 +23,7 @@ A={
   --CandaceRoute
   [21]={"Oh, how funny, that's mine too!",["t"]={50}},
   [22]={"Nice to meet you, Candace.", ["t"]={50}},
-  [23]={"So, do you have any memory about the incident?"}
+  [23]={"So, do you have any memory about the incident?" ,{"Which incident?"}, {"I think I remember."}}
 }
 DEF_WAIT = 60
 DEF_TXT_S = 3
@@ -40,9 +40,23 @@ tcompt=0
 wait_t=0
 can_pass=true
 
+q={
+  --[[states: 
+  0 is black screen between questions
+  1 is question appearing
+  2 is choices appearing
+  3 is waiting for input
+  4 is answer appearing
+  5 is remain time
+  ]]--
+  state=0,
+  t=0
+}
+
 zc=0
 cur_i = 18
 cur_q = A[cur_i]
+cur_ans = nil
 
 function TIC()
   _G[ST[g.s]]()
@@ -68,6 +82,16 @@ function dc(object)
   return _copy(object)
 end
 
+function lpx(txt)
+  return print(txt, -100, -100)
+end
+
+function make_answer(txt)
+  if type(txt)=="table" then for i,v in pairs(yes) do
+    print(v, 120-lpx(txt)//2, 120-#txt*9+i*9-9) end
+  else print(txt, 120-lpx(txt)//2, 120) end
+end
+
 function show_choices()
   for i,j in pairs(A[cur_i]) do
     if i~=1 then
@@ -85,21 +109,29 @@ function show_choices()
   end
   for i=2,3 do
     if btnp(i) then
-      if A[cur_i][i] and A[cur_i][i][2] then nexq(A[cur_i][i][2])
-      elseif A[cur_i][i] then nexq(cur_i+1) end
+      if A[cur_i][i] and A[cur_i][i][2] then movnext(A[cur_i][i][2])
+      elseif A[cur_i][i] then movnext(cur_i+1) end
     end
   end
   for i=0,1 do
-    if btnp(i) and A[cur_i][5-i] and A[cur_i][5-i][2] then nexq(A[cur_i][5-i][2]) end
+    if btnp(i) and A[cur_i][5-i] and A[cur_i][5-i][2] then movnext(A[cur_i][5-i][2]) end
   end
 end
+
+function movnext(indx, ans)
+  ans = ans or ""
+  if ans=="" then nexq(indx)
+  else return 3 end
+end
+
 
 function nexq(indx)
   tt = 0
   wait_t=0
   can_pass=false
-  if A[indx] then 
-    cur_i = indx
+  cur_ans = nil
+  if A[indx] thenexq
+    cur_i = indxnexq
     cur_q = dc(A[cur_i])
     if cur_i==-1 then cur_q[1]=SRY[t_compt_wrong] t_compt_wrong=t_compt_wrong+1 end
   end
@@ -200,14 +232,54 @@ end
 
 ccount = 0
 DEF_REMAIN = 60
+backcol=0
 
 function intro()
-  cls()
+  cls(backcol)
   if wait_t<DEF_WAIT and wait_t>-1 then wait_t=wait_t+1 return elseif wait_t>-1 then tt=0 wait_t=-1 end
   show_choices()
   show_quest()
   if ccount~=0 then ccount=white_to_black(0,ccount) end
 end
 
+function state_q()
+  q.t=q.t+1
+  if q.state==0 then
+    cls(backcol)
+    if q.t>DEF_WAIT then q.state=1 q.t=0 end
+  elseif q.state==1 then
+    cls(backcol)
+    render_quest()
+
+function render_quest()
+  txt = cur_q[1]
+  if cur_i==1 then
+    if btnp(1) and tt//60>2 then
+      ccount=1
+      tt = 0
+      tcompt=tcompt+1
+      if tcompt>2 then nexq(2) end
+    elseif tt//60>1 then
+      m_arrow()
+    end
+    return
+  elseif cur_i==7 then
+    local txt="I see that you're quite... discrete."
+    print(string.sub(txt,0,math.min(tt//DEF_TXT_S, string.len(txt)-10)), 120-print(txt, -100, -100)//2, 64)
+    if tt//DEF_TXT_S>string.len(txt)-10+30 then
+      print(string.sub(txt,0,math.min(tt//2-string.len(txt)+10-30, string.len(txt))), 120-print(txt, -100, -100)//2, 64)
+    end
+    if tt//DEF_TXT_S>string.len(txt)-10+30+30 then nexq(8) end
+    return
+  elseif cur_i==9 then
+    if tt//20<20 and tt//20%6>1 then
+      spr(1, math.min(3, -30+tt/8), 64, 0, 1, 0, 1, 2, 2)
+      spr(1, math.max(219, 254-tt/8), 57, 0, 1, 0, 3, 2, 2) 
+    elseif tt//20>20 then
+      nexq(10)
+    end
+  end
+  printtxt(txt)
+end
 
 for i,j in ipairs({[1]=1, [2]=2, [4]=4}) do trace(i) trace(j) end trace("--")
