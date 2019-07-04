@@ -23,7 +23,7 @@ A={
   --CandaceRoute
   [21]={"Oh, how funny, that's mine too!",["t"]={50}},
   [22]={"Nice to meet you, Candace.", ["t"]={50}},
-  [23]={"So, do you have any memory about the incident?" ,{"Which incident?"}, {"I think I remember."}}
+  [23]={{{"So, do you have any memory"," about the incident?"}} ,{"Which incident?"}, {"I think I remember."}}
 }
 DEF_WAIT = 60
 DEF_TXT_S = 3
@@ -130,8 +130,8 @@ function nexq(indx)
   wait_t=0
   can_pass=false
   cur_ans = nil
-  if A[indx] thenexq
-    cur_i = indxnexq
+  if A[indx] then
+    cur_i = indx
     cur_q = dc(A[cur_i])
     if cur_i==-1 then cur_q[1]=SRY[t_compt_wrong] t_compt_wrong=t_compt_wrong+1 end
   end
@@ -179,10 +179,10 @@ txt_t=0
 function printtxt(txt)
   if type(txt)=="string" then
     if false then 
-      print(txt, 120-print(txt, -100, -100)//2, 64)
+      print(txt, 120-lpx(txt)//2, 64)
     else 
       can_pass = math.min(tt//DEF_TXT_S, string.len(txt))==string.len(txt)
-      print(string.sub(txt,0,math.min(tt//DEF_TXT_S, string.len(txt))), 120-print(txt, -100, -100)//2, 64)
+      print(string.sub(txt,0,math.min(tt//DEF_TXT_S, string.len(txt))), 120-lpx(txt)//2, 64)
     end
   elseif type(txt)=="table" then
     local a = txt["s"] or DEF_TXT_S
@@ -194,14 +194,14 @@ function printtxt(txt)
         --print(print(txt[2], -100, -100), 0, 30)
         --print(tt//a-waiter, 0, i*10)
         if (tt//a-waiter)>=0 then
-          print(string.sub(j,0,math.min(tt//a-waiter, string.len(j))), 120-print(j, -100, -100)//2, 64-#txt*9+i*9)
+          print(string.sub(j,0,math.min(tt//a-waiter, string.len(j))), 120-lpx(txt)//2, 64-#txt*9+i*9)
         end
         waiter=waiter+string.len(j)
       end
       can_pass = tt//a-waiter>=0
     else
       local j = txt
-      print(string.sub(txt,0,math.min(tt//a, string.len(j))), 120-print(txt, -100, -100)//2, 64)
+      print(string.sub(txt,0,math.min(tt//a, string.len(j))), 120-lpx(txt)//2, 64)
       can_pass=tt//a-string.len(j)>=0
     end
   end
@@ -249,9 +249,91 @@ function state_q()
     if q.t>DEF_WAIT then q.state=1 q.t=0 end
   elseif q.state==1 then
     cls(backcol)
-    render_quest()
+    if render_quest(q.t) then q.state=2 q.t=0 end
+  elseif q.state==2 then
+    cls(backcol)
+    render_quest(0, true)
+    local temp = show_choices()
+    if q.t>0 then q.state=3 q.t=0 end --0 is default waiting for input
+  elseif q.state==3 then
+    cls(backcol)
+    render_quest(0, true)
+    local temp = show_choices()
+    if temp then thechosen=temp q.state=3 q.t=0 end
+  elseif q.state==4 then
+    if not cur_q[thechosen[2]]["r"] then q.state=5 q.t=0 return
+    else 
+      if show_ans(cur_q[thechosen[2]]["r"], q.t) then nexq(thechosen[1]) q.state=0 q.t=0 end --maybe add remain time in nexq
+    end
+  end
+end
 
-function render_quest()
+function show_ans(msg, time)
+  if type(msg)=="string" then
+    ended = math.min(time//DEF_TXT_S, string.len(txt))==string.len(txt)
+    print(string.sub(txt,0,math.min(time//DEF_TXT_S, string.len(txt))), 120-lpx(txt)//2, 130)
+  elseif type(msg)=="table" then
+    local waiter=0
+    for i,v in msg do
+      if (time//a-waiter)>=0 then
+        print(string.sub(j,0,math.min(time//a-waiter, string.len(j))), 120-lpx(txt)//2, 64-#txt*9+i*9)
+      end
+      waiter=waiter+string.len(j)
+    end
+  ended = time//a-waiter>=0
+  end
+  return ended
+end
+
+thechosen = nil
+
+function movnext2(n_and_i)
+  if cur_q[n_and_i[2]]["r"] then thechosen=cur_q[n_and_i[2]]["r"] 
+  else thechosen=nil end
+end
+
+
+function nexq2(indx)
+  tt = 0
+  wait_t=0
+  can_pass=false
+  cur_ans = nil
+  if A[indx] then
+    cur_i = indx
+    cur_q = dc(A[cur_i])
+    if cur_i==-1 then cur_q[1]=SRY[t_compt_wrong] t_compt_wrong=t_compt_wrong+1 end
+  end
+end
+
+function show_choices2()
+  for i,j in pairs(A[cur_i]) do
+    if i~=1 then
+      if i==2 then 
+        if type(j[1])=="table" then for k,l in pairs(j[1]) do
+          print(l, 0, 120-#j*9+k*9-9) end
+        else print(j[1], 0, 120) end --line(20, 50, 20, 80, 15)
+      elseif i==3 then
+        if type(j[1])=="table" then for k,l in pairs(j[1]) do
+          print(l, 240-print(l, -100, -100), 120-#j*9+k*9-9) end
+        else print(j[1], 240-print(j[1], -100, -100), 120) end -- line(225, 50, 225, 80, 15)
+      elseif i==4 then print(j[1], 120-(print(j[1], -100, -100)//2), 128) 
+      elseif i==5 then print(j[1], 120-(print(j[1], -100, -100)//2), 2) end
+    end
+  end
+  for i=2,3 do
+    if btnp(i) then
+      if A[cur_i][i] and A[cur_i][i][2] then return {A[cur_i][i][2], i}
+      elseif A[cur_i][i] then return {cur_i+1, i} end
+    end
+  end
+  for i=0,1 do
+    if btnp(i) and A[cur_i][5-i] and A[cur_i][5-i][2] then return {A[cur_i][5-i][2], 5-i} end
+  end
+end
+
+
+function render_quest(time, showfull)
+  if showfull==true then time=9999999 end
   txt = cur_q[1]
   if cur_i==1 then
     if btnp(1) and tt//60>2 then
@@ -279,7 +361,40 @@ function render_quest()
       nexq(10)
     end
   end
-  printtxt(txt)
+  return printtxt2(txt, time)
 end
+
+function printtxt2(txt, time)
+  local ended = true
+  if type(txt)=="string" then
+    if false then 
+      print(txt, 120-lpx(txt)//2, 64)
+    else 
+      ended = math.min(time//DEF_TXT_S, string.len(txt))==string.len(txt)
+      print(string.sub(txt,0,math.min(time//DEF_TXT_S, string.len(txt))), 120-lpx(txt)//2, 64)
+    end
+  elseif type(txt)=="table" then
+    local a = txt["s"] or DEF_TXT_S
+    local txt = txt[1]
+    if type(txt)=="table" then
+      local waiter = 0
+      for i,j in ipairs(txt) do
+        --print(can_pass)
+        --print(print(txt[2], -100, -100), 0, 30)
+        --print(tt//a-waiter, 0, i*10)
+        if (time//a-waiter)>=0 then
+          print(string.sub(j,0,math.min(time//a-waiter, string.len(j))), 120-lpx(txt)//2, 64-#txt*9+i*9)
+        end
+        waiter=waiter+string.len(j)
+      end
+    ended = time//a-waiter>=0
+    else
+      local j = txt
+      print(string.sub(txt,0,math.min(time//a, string.len(j))), 120-lpx(txt)//2, 64)
+      ended=time//a-string.len(j)>=0
+    end
+  end
+  return ended
+end 
 
 for i,j in ipairs({[1]=1, [2]=2, [4]=4}) do trace(i) trace(j) end trace("--")
