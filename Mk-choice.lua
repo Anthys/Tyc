@@ -1,4 +1,3 @@
-
 A={
   [1]={""},
   [2]={{{"Oh..."}, ["s"]= 15},["t"]={50}},
@@ -19,11 +18,12 @@ A={
   [17]={"Understandable.", ["t"]={50}},
   [18]={{{"I will have to ask you a few questions,", "if you don't mind."}}, ["t"]={50}},
   [19]={"That's just the protocol.", ["t"]={50}},
-  [20]={"What is your name?", {{"I do not ","remember."}, 999}, {"Candace."}},
+  [20]={"What is your name?", {{"I do not ","remember."}, 999}, {"Candace.", ["r"]="Yes"}},
   --CandaceRoute
   [21]={"Oh, how funny, that's mine too!",["t"]={50}},
   [22]={"Nice to meet you, Candace.", ["t"]={50}},
-  [23]={{{"So, do you have any memory"," about the incident?"}} ,{"Which incident?"}, {"I think I remember."}}
+  [23]={{{"So, do you have any memory"," about the incident?"}} ,{"Which incident?"}, {"I think I remember."}},
+  [24]={""}
 }
 DEF_WAIT = 60
 DEF_TXT_S = 3
@@ -194,7 +194,7 @@ function printtxt(txt)
         --print(print(txt[2], -100, -100), 0, 30)
         --print(tt//a-waiter, 0, i*10)
         if (tt//a-waiter)>=0 then
-          print(string.sub(j,0,math.min(tt//a-waiter, string.len(j))), 120-lpx(txt)//2, 64-#txt*9+i*9)
+          print(string.sub(j,0,math.min(tt//a-waiter, string.len(j))), 120-lpx(j)//2, 64-#txt*9+i*9)
         end
         waiter=waiter+string.len(j)
       end
@@ -235,11 +235,12 @@ DEF_REMAIN = 60
 backcol=0
 
 function intro()
-  cls(backcol)
-  if wait_t<DEF_WAIT and wait_t>-1 then wait_t=wait_t+1 return elseif wait_t>-1 then tt=0 wait_t=-1 end
-  show_choices()
-  show_quest()
-  if ccount~=0 then ccount=white_to_black(0,ccount) end
+  --cls(backcol)
+  --if wait_t<DEF_WAIT and wait_t>-1 then wait_t=wait_t+1 return elseif wait_t>-1 then tt=0 wait_t=-1 end
+  --show_choices()
+  --show_quest()
+  --if ccount~=0 then ccount=white_to_black(0,ccount) end
+  state_q()
 end
 
 function state_q()
@@ -258,25 +259,40 @@ function state_q()
   elseif q.state==3 then
     cls(backcol)
     render_quest(0, true)
-    local temp = show_choices()
-    if temp then thechosen=temp q.state=3 q.t=0 end
+    local temp = show_choices2() or time_flow()
+    if temp then thechosen=temp q.state=4 q.t=0 end
   elseif q.state==4 then
-    if not cur_q[thechosen[2]]["r"] then q.state=5 q.t=0 return
+    if not thechosen then print("ERROR") return end
+    if not thechosen["r"] then q.state=5 q.t=0 return
     else 
-      if show_ans(cur_q[thechosen[2]]["r"], q.t) then nexq(thechosen[1]) q.state=0 q.t=0 end --maybe add remain time in nexq
+      if show_ans(thechosen["r"], q.t) then nexq2(thechosen[1]) q.state=0 q.t=0 end --maybe add remain time in nexq
     end
+  elseif q.state==5 then nexq2(thechosen[1]) q.state=0 q.t=0
+  end
+  if thechosen then print(thechosen["r"], 0, 10) end
+  print(q.state)
+end
+
+function time_flow()
+  print(q.t, 0, 30)
+  if cur_q["t"] and q.t>cur_q["t"][1] then
+    output = {}
+    if cur_q["t"][2] then output[1]=cur_q['t'][2] else output[1]=cur_i+1 end
+    if cur_q["t"][3] then output["r"]=cur_q["t"][3] end
+    return output
   end
 end
 
 function show_ans(msg, time)
+  local a = DEF_TXT_S
   if type(msg)=="string" then
-    ended = math.min(time//DEF_TXT_S, string.len(txt))==string.len(txt)
-    print(string.sub(txt,0,math.min(time//DEF_TXT_S, string.len(txt))), 120-lpx(txt)//2, 130)
+    ended = math.min(time//a, string.len(txt))==string.len(txt)
+    print(string.sub(txt,0,math.min(time//a, string.len(txt))), 120-lpx(txt)//2, 130)
   elseif type(msg)=="table" then
     local waiter=0
     for i,v in msg do
       if (time//a-waiter)>=0 then
-        print(string.sub(j,0,math.min(time//a-waiter, string.len(j))), 120-lpx(txt)//2, 64-#txt*9+i*9)
+        print(string.sub(j,0,math.min(time//a-waiter, string.len(v))), 120-lpx(v)//2, 130-#msg*9+i*9)
       end
       waiter=waiter+string.len(j)
     end
@@ -285,7 +301,7 @@ function show_ans(msg, time)
   return ended
 end
 
-thechosen = nil
+thechosen = nil --Type: {INDX TO GO, ["r"]=ANSW}
 
 function movnext2(n_and_i)
   if cur_q[n_and_i[2]]["r"] then thechosen=cur_q[n_and_i[2]]["r"] 
@@ -322,15 +338,20 @@ function show_choices2()
   end
   for i=2,3 do
     if btnp(i) then
-      if A[cur_i][i] and A[cur_i][i][2] then return {A[cur_i][i][2], i}
-      elseif A[cur_i][i] then return {cur_i+1, i} end
+      if A[cur_i][i] and A[cur_i][i][2] then return {A[cur_i][i][2], ["r"]=get_ans(i)}
+      elseif A[cur_i][i] then return {cur_i+1, ["r"]=get_ans(i)} end
     end
   end
   for i=0,1 do
-    if btnp(i) and A[cur_i][5-i] and A[cur_i][5-i][2] then return {A[cur_i][5-i][2], 5-i} end
+    if btnp(i) and A[cur_i][5-i] and A[cur_i][5-i][2] then return {A[cur_i][5-i][2], ["r"]=get_ans(5-i)} end
   end
 end
 
+function get_ans(iofcurq)
+  trace(iofcurq)
+  trace(#cur_q)
+  if cur_q[iofcurq]["r"] then return cur_q[iofcurq]["r"] end
+end
 
 function render_quest(time, showfull)
   if showfull==true then time=9999999 end
@@ -340,7 +361,7 @@ function render_quest(time, showfull)
       ccount=1
       tt = 0
       tcompt=tcompt+1
-      if tcompt>2 then nexq(2) end
+      if tcompt>2 then nexq2(2) end
     elseif tt//60>1 then
       m_arrow()
     end
@@ -351,14 +372,14 @@ function render_quest(time, showfull)
     if tt//DEF_TXT_S>string.len(txt)-10+30 then
       print(string.sub(txt,0,math.min(tt//2-string.len(txt)+10-30, string.len(txt))), 120-print(txt, -100, -100)//2, 64)
     end
-    if tt//DEF_TXT_S>string.len(txt)-10+30+30 then nexq(8) end
+    if tt//DEF_TXT_S>string.len(txt)-10+30+30 then nexq2(8) end
     return
   elseif cur_i==9 then
     if tt//20<20 and tt//20%6>1 then
       spr(1, math.min(3, -30+tt/8), 64, 0, 1, 0, 1, 2, 2)
       spr(1, math.max(219, 254-tt/8), 57, 0, 1, 0, 3, 2, 2) 
     elseif tt//20>20 then
-      nexq(10)
+      nexq2(10)
     end
   end
   return printtxt2(txt, time)
@@ -383,7 +404,7 @@ function printtxt2(txt, time)
         --print(print(txt[2], -100, -100), 0, 30)
         --print(tt//a-waiter, 0, i*10)
         if (time//a-waiter)>=0 then
-          print(string.sub(j,0,math.min(time//a-waiter, string.len(j))), 120-lpx(txt)//2, 64-#txt*9+i*9)
+          print(string.sub(j,0,math.min(time//a-waiter, string.len(j))), 120-lpx(j)//2, 64-#txt*9+i*9)
         end
         waiter=waiter+string.len(j)
       end
