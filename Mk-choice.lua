@@ -18,12 +18,14 @@ A={
   [17]={"Understandable.", ["t"]={50}},
   [18]={{{"I will have to ask you a few questions,", "if you don't mind."}}, ["t"]={50}},
   [19]={"That's just the protocol.", ["t"]={50}},
-  [20]={"What is your name?", {{"I do not ","remember."}, 999}, {"Candace.", ["r"]="Yes"}},
+  [20]={"What is your name?", {{"I do not ","remember."}, 999}, {"Candace.", ["r"]="My name is Candace."}},
   --CandaceRoute
   [21]={"Oh, how funny, that's mine too!",["t"]={50}},
   [22]={"Nice to meet you, Candace.", ["t"]={50}},
-  [23]={{{"So, do you have any memory"," about the incident?"}} ,{"Which incident?"}, {"I think I remember."}},
-  [24]={""}
+  [23]={{{"So, do you have any memory"," about the incident?"}} ,{"Which incident?"}, {"I think I remember.", ["r"]={"I remember blades. And pain.", "A lot of pain."}}},
+  [30]={{{"Do you remember any visual element, ", "if this doesn't sounds too impolite?"}}, {{"I think I will stop", "talking about it."}}},
+  [31]={"I'm sorry. Please accept my apologies, I didn't want to hurt you."},
+  [32]={{{"Let's switch to a lighter topic.", "Do you have any family, or relatives that we could contact?"}}}
 }
 DEF_WAIT = 60
 DEF_TXT_S = 3
@@ -54,7 +56,7 @@ q={
 }
 
 zc=0
-cur_i = 18
+cur_i = 1
 cur_q = A[cur_i]
 cur_ans = nil
 
@@ -254,18 +256,21 @@ function state_q()
   elseif q.state==2 then
     cls(backcol)
     render_quest(0, true)
-    local temp = show_choices()
+    --local temp = show_choices()
     if q.t>0 then q.state=3 q.t=0 end --0 is default waiting for input
   elseif q.state==3 then
     cls(backcol)
     render_quest(0, true)
     local temp = show_choices2() or time_flow()
-    if temp then thechosen=temp q.state=4 q.t=0 end
+    if temp then thechosen=temp q.state=4 q.t=0 finwait = false end
   elseif q.state==4 then
+    cls(backcol)
     if not thechosen then print("ERROR") return end
     if not thechosen["r"] then q.state=5 q.t=0 return
-    else 
-      if show_ans(thechosen["r"], q.t) then nexq2(thechosen[1]) q.state=0 q.t=0 end --maybe add remain time in nexq
+    else
+      if finwait and q.t < 60 then show_ans(thechosen["r"], 1000) return 
+      elseif finwait then nexq2(thechosen[1]) q.state=0 q.t=0 end
+      if show_ans(thechosen["r"], q.t) then finwait=true q.t=0 end --maybe add remain time in nexq
     end
   elseif q.state==5 then nexq2(thechosen[1]) q.state=0 q.t=0
   end
@@ -285,16 +290,17 @@ end
 
 function show_ans(msg, time)
   local a = DEF_TXT_S
+  txt = msg
   if type(msg)=="string" then
     ended = math.min(time//a, string.len(txt))==string.len(txt)
     print(string.sub(txt,0,math.min(time//a, string.len(txt))), 120-lpx(txt)//2, 130)
   elseif type(msg)=="table" then
     local waiter=0
-    for i,v in msg do
+    for i,v in pairs(msg) do
       if (time//a-waiter)>=0 then
-        print(string.sub(j,0,math.min(time//a-waiter, string.len(v))), 120-lpx(v)//2, 130-#msg*9+i*9)
+        print(string.sub(v,0,math.min(time//a-waiter, string.len(v))), 120-lpx(v)//2, 130-#msg*9+i*9)
       end
-      waiter=waiter+string.len(j)
+      waiter=waiter+string.len(v)
     end
   ended = time//a-waiter>=0
   end
@@ -326,11 +332,11 @@ function show_choices2()
     if i~=1 then
       if i==2 then 
         if type(j[1])=="table" then for k,l in pairs(j[1]) do
-          print(l, 0, 120-#j*9+k*9-9) end
+          print(l, 0, 120-#j*9+k*9) end
         else print(j[1], 0, 120) end --line(20, 50, 20, 80, 15)
       elseif i==3 then
         if type(j[1])=="table" then for k,l in pairs(j[1]) do
-          print(l, 240-print(l, -100, -100), 120-#j*9+k*9-9) end
+          print(l, 240-print(l, -100, -100), 120-#j*9+k*9) end
         else print(j[1], 240-print(j[1], -100, -100), 120) end -- line(225, 50, 225, 80, 15)
       elseif i==4 then print(j[1], 120-(print(j[1], -100, -100)//2), 128) 
       elseif i==5 then print(j[1], 120-(print(j[1], -100, -100)//2), 2) end
