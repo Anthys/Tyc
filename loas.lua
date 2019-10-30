@@ -85,6 +85,14 @@ function action_box()
   end
 end
 
+function condition()
+  local condi = {}
+  condi.check = function check()
+    
+    end
+  return condi
+end
+
 focus_dyc={"map", "action", "inv", "text"}
 indx_focus={["map"]=1, ["action"]=2, ["inv"]=3, ["text"]=4}
 
