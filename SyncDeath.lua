@@ -22,7 +22,7 @@ ST = {"prepo","duo", "endo"}
 
 BIB = {
   MONST={
-    {"vampire", "scary scary", 1, {1, 2}, 9},
+    {"vampire", "scary scary", 1, {1, 3}, 9},
     {"void witch", "tenebrous", 2, {1, 2}, 9},
     {"skekleton", "noisy", 3, {1, 2}, 9},
     {"dead pumpkin", "ded", 4, {1, 2}, 9}
@@ -31,7 +31,8 @@ BIB = {
   MSTATT={
     {"claw", 2, "att", 2},
     {"fireball", 2, "att", 5, true},
-    {"sneaky jump", 1, "def", 100}
+    {"sneaky jump", 1, "def", 100},
+    {"give back", 1, "def", 50}
     --{"name", "preptime int", "type", "value", "stopable bool false default"}
   },
   PL = {
@@ -489,10 +490,28 @@ function do_act(usr, act, tgt)
   end
 end
 
+function monster_def_turn()
+  for im=1,3 do
+    local mnst = cmonst[im]
+    local c_at = mnst.spels[mnst.c_att]
+    mnst.def = 0
+    if c_at.type == "def" then 
+      mnst.st_att = mnst.st_att + 1
+      if mnst.st_att >= c_at.preptim and HER[im].a then 
+      do_act(mnst, c_at, HER[im]) 
+      mnst.st_att = 0
+      mnst.c_att = rnd1(#mnst.spels-1) 
+      end
+    end
+  end
+end
 
 function next_turn()
+  monster_def_turn()
+  player_turn(slct.act)
   monster_turn()
   checkded()
+  scor.r=scor.r+1
 end
 
 function attack(tgt, v)
@@ -500,7 +519,15 @@ function attack(tgt, v)
     if v-tgt.def > 0 then
       tgt.pv = tgt.pv - v + tgt.def end
     if tgt.spels[tgt.c_att].stop == true then stop_attack(tgt) end
-    if tgt.th == "monst" then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y, "slice", rnd0(1)*2-1) end
+    if tgt.th == "monst" then
+      if v<=3 then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y, "slice", rnd0(1)*2-1) 
+      else 
+        local inv = rnd0(1)*2-1
+        for j=0,5 do
+          anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y+j, "slice", inv)
+        end
+      end
+    end
   end
 end
 
@@ -542,23 +569,27 @@ anims = {}
 
 function player_turn(inx) 
   for i=1,3 do
-    if not HER[i].a then return end
-    HER[i].def = 0 
-    do_act(HER[i], HER[i].spels[inx], cmonst[i]) end
+    if HER[i].a then
+      HER[i].def = 0 
+      do_act(HER[i], HER[i].spels[inx], cmonst[i]) 
+    end
+  end
 end
 
 function monster_turn()
   for im=1,3 do
     local mnst = cmonst[im]
     local c_at = mnst.spels[mnst.c_att]
-    mnst.def = 0
-    mnst.st_att = mnst.st_att + 1
-    if mnst.st_att >= c_at.preptim and HER[im].a then 
-      do_act(mnst, c_at, HER[im]) 
-      mnst.st_att = 0 
-      mnst.c_att = rnd1(#mnst.spels-1) 
+    if mnst.pv < 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1
+    elseif c_at.type == "def" then return
+    else
+      mnst.st_att = mnst.st_att + 1
+      if mnst.st_att >= c_at.preptim and HER[im].a then 
+        do_act(mnst, c_at, HER[im]) 
+        mnst.st_att = 0 
+        mnst.c_att = rnd1(#mnst.spels-1) 
+      end
     end
-    if mnst.pv < 0 then newmonst(monstpack[rnd1(#monstpack)], im) end
   end
 end
 
@@ -607,7 +638,6 @@ function duo()
   if btnp(6) and not VIS.chox then VIS.chox = true 
   elseif (btnp(5) or btnp(6)) and not VIS.choxchox then VIS.chox = false end
   if slct.act ~= 0 then
-    player_turn(slct.act)
     next_turn()
     slct.act = 0
     VIS.chox=false
@@ -666,6 +696,6 @@ end
 if debug then
   game.s = 2
   HER = {Player(1, 1), Player(2, 2), Player(3, 3)}
-  monstpack={1, 1, 1}
+  monstpack={1, 2, 3}
   cmonst = {Monst(1, 1), Monst(1, 2), Monst(1, 3)}
 end
