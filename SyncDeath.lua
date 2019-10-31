@@ -17,7 +17,7 @@ cols = {5, 6, 7}
 
 spd = 7
 --"intro", "initio", 
-ST = {"prepo","duo"}
+ST = {"prepo","duo", "endo"}
 
 BIB = {
   MONST={
@@ -203,7 +203,7 @@ function has(t, v)
   return 0
 end
 
-slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}}
+slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}, endm=''}
 VIS={chox=false, choxchox=false, descsp=false}
 
 SHP = {"circle_grow", "circle_cons"}
@@ -220,9 +220,31 @@ function trace_table(tbl)
   return res
 end
 
+function checkded()
+  local sum = 0
+  for i=1,3 do
+    if HER[i].pv<=0 then
+      HER[i].a=false
+      sum=sum+1
+    end
+  end
+  if sum==3 then
+    game.s=game.s+1
+  end
+end
+
 function initio()
   init_pm()
   game.s=game.s+1
+end
+
+endm = {"Nicely died.", "Succesfully failed.", "Perfection in the desynchronization."}
+
+function endo()
+  cls(0)
+  if slct.endm == "" then slct.endm = endm[rnd1(#endm)] end
+  local txt = slct.endm
+  print(txt, mid(txt), 40)
 end
 
 function TIC()
@@ -284,7 +306,7 @@ function show_choices()
     for m,v in pairs(cd.spels) do 
       local tx = TL[d].x-pxltxt(v.name)//2
       local ty = TL[d].y+51+m*8-8
-      print(v.name,tx,ty,15,false,1, false)
+      print(v.name,tx,ty,cd.a and 15 or 10,false,1, false)
       local sprt = SPR[v.type]
       spr(sprt, tx-10, ty-1, 0)
     end
@@ -380,6 +402,7 @@ function Player(inx)
   m.pv = dp[5]
   m.c_att = 1
   m.def = 0
+  m.a = true --alive
   return m
 end
 
@@ -421,8 +444,9 @@ function Monst(inx)
   m.c_att = rnd1(#m.spels-1)
   m.st_att = 0
   m.def = 0
+  m.a = true
   return m
-end 
+end
 
 function init_pm()
   for i=1,3 do
@@ -433,6 +457,7 @@ end
 
 
 function do_act(usr, act, tgt)
+  if not usr.a then return end
   if act.type == "att" then attack(tgt, act.val)
   elseif act.type == "def" then usr.def = act.val 
   elseif act.type == "heel" then usr.pv = usr.pv + act.val end
@@ -441,6 +466,7 @@ end
 
 function next_turn()
   monster_turn()
+  checkded()
 end
 
 function attack(tgt, v)
@@ -452,7 +478,10 @@ function attack(tgt, v)
 end
 
 function player_turn(inx) 
-  for i=1,3 do HER[i].def = 0 do_act(HER[i], HER[i].spels[inx], cmonst[i]) end
+  for i=1,3 do
+    if not HER[i].a then return end
+    HER[i].def = 0 
+    do_act(HER[i], HER[i].spels[inx], cmonst[i]) end
 end
 
 function monster_turn()
@@ -461,7 +490,11 @@ function monster_turn()
     local c_at = mnst.spels[mnst.c_att]
     mnst.def = 0
     mnst.st_att = mnst.st_att + 1
-    if mnst.st_att >= c_at.preptim then do_act(mnst, c_at, HER[im]) mnst.st_att = 0 mnst.c_att = rnd1(#mnst.spels-1) end
+    if mnst.st_att >= c_at.preptim and HER[im].a then 
+      do_act(mnst, c_at, HER[im]) 
+      mnst.st_att = 0 
+      mnst.c_att = rnd1(#mnst.spels-1) 
+    end
     if mnst.pv < 0 then newmonst(monstpack[rnd1(#monstpack)], im) end
   end
 end
@@ -490,6 +523,18 @@ function HUD_health()
   end
 end
 
+function whitenoise(x,y,n)
+  local n = n or 1
+  for h=1,n do
+    for i=1,10 do
+      for j=1,18 do
+        local sprt = 16*math.random(4,7) + math.random(0,1)
+        spr(sprt, -8 +i*8 +x,-8+ j*8+y, 0)
+      end
+    end
+  end
+end
+
 function duo()
   cls(0)
   backdim()
@@ -508,8 +553,17 @@ function duo()
     show_choices()
     selecti(slct.chox)
   end
+  discoball()
 end
 
+function discoball()
+  for i=1,3 do
+    if not HER[i].a then
+      whitenoise((i-1)*LENX//3,0,2)
+      print("Disconnected", TL[i].x-pxltxt("Disconnected")//2, TL[i].y+60) 
+    end
+  end
+end
 
 --VISU
 
@@ -548,7 +602,7 @@ function circle_grow(x, y, r, inv)
 end
 
 if debug then
-  game.s = 2
+  game.s = 3
   HER = {Player(1), Player(2), Player(3)}
   monstpack={1, 1, 1}
   cmonst = {Monst(1), Monst(1), Monst(1)}
