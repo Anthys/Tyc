@@ -68,6 +68,7 @@ function prepo()
     spr(35, LENX//2-(11*16)//2, LENY//2-(10*16)//2, 0, 2, false, false, 12, 12)
     rect(0, 0, 33, LENY, 6)
     rect(LENX-33, 0, 33, LENY, 6)
+    print(tt//35%2==0 and "Start" or "", 140, 50, 15)
   end
 end
 
