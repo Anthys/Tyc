@@ -16,8 +16,8 @@ circle = {
 cols = {5, 6, 7}
 
 spd = 7
-
-ST = {"intro", "initio", "duo", "prepo"}
+--"intro", "initio", 
+ST = {"prepo","duo"}
 
 BIB = {
   MONST={
@@ -34,8 +34,8 @@ BIB = {
     --{"name", "preptime int", "type", "value", "stopable bool false default"}
   },
   PL = {
-    {"michel", "oui", 6, {1,2,3}, 10},
-    {"steven", "non", 7, {1,4,5}, 10},
+    {"michel", "warrior of the void", 6, {1,2,3}, 10},
+    {"steven", "strongest man aliv", 7, {1,4,5}, 10},
     {"gilbert", "jsp", 8, {2,3,6}, 10},
     {"kevin", "benkevinquoi", 9, {4, 5, 6}, 11}
   },
@@ -51,28 +51,165 @@ BIB = {
 }
 
 
+debug = true
 
 HER = {}
 
-splbl = {}
-
 sm_st = 0
 
-game.s = 4
+--game.s = 4
+monstpack={}
+prepsq = {}
 
 function prepo()
   cls(0)
   if sm_st==0 then
-    --rect(10, 10, LENX-20, LENY-20, 15)
     --print("Synchronized \ndeath", 20, 20, 0, true, 2)
     spr(35, LENX//2-(11*16)//2, LENY//2-(10*16)//2, 0, 2, false, false, 12, 12)
     rect(0, 0, 33, LENY, 6)
     rect(LENX-33, 0, 33, LENY, 6)
-    print(tt//35%2==0 and "Start" or "", 140, 50, 15)
+    rect(((tt//1)%50)/50*90 + 70, 50, 2, 40, 0)
+    rect(((tt+4//1)%80)/80*90 + 70, 50, 2, 40, 0)
+    rect(((tt+4//1)%30)/30*90 + 70, 50, 2, 40, 0)
+    if t==0 then 
+      for i=1,40 do
+        local theta = math.random()*2*math.pi
+        local rx = math.random(50, 90)
+        local ry = math.random(40, 80)
+        prepsq[#prepsq+1] = {math.cos(theta)*rx + LENX//2, math.sin(theta)*ry + LENY//2}
+      end
+    end
+    for i,v in pairs(prepsq) do
+      rect(v[1],v[2],4,4,0)
+    end
+    table.remove(prepsq,1)
+    local theta = math.random()*2*math.pi
+    local rx = math.random(60, 100)
+    local ry = math.random(50, 90)
+    prepsq[#prepsq+1] = {math.cos(theta)*rx + LENX//2, math.sin(theta)*ry + LENY//2}
+    print(tt//35%2==0 and "Start" or "", LENX//2-pxltxt("Start")//2, LENY//2+25, 15)
+    for i=0,7 do
+      if btnp(i) then sm_st=1 end
+    end
+  elseif sm_st==1 then
+    rect(10, 10, LENX-20, LENY-20, 15)
+    local txt = "Choose players: "
+    print(txt,mid(txt),20,0)
+    for i,v in pairs(BIB.PL) do
+      print(v[1], 30, 30+i*10,0)
+      if has(slct.pl, i)~=0 then rect(25, 30+i*10+2, 2, 2, 0) end
+    end
+    rect(80, 40, 1, LENY//2,0)
+    local sl = BIB.PL[slct.chosh]
+    rectb(30-2, 30+slct.chosh*10-2, pxltxt(sl[1])+4, 9, 0)
+    txt = sl[2]
+    print(txt,150-pxltxt(txt)//2, 100,0)
+    txt = "Lifepoints : "..tostring(sl[5])
+    print(txt,100, 40,0)
+    print("Spels : ", 100, 50, 0)
+    for i,v in pairs(sl[4]) do 
+      print(BIB.SP[v][1],110,60-9+9*i, 0)
+    end
+    if btnp(0) then slct.chosh = (slct.chosh-2)%#BIB.PL+1
+    elseif btnp(1) then slct.chosh = (slct.chosh)%#BIB.PL+1 
+    elseif btnp(6) and #slct.pl==3 then sm_st=2 tt=0
+    elseif btnp(4) then
+      local i = slct.chosh
+      local ys = has(slct.pl, i)
+      if ys~=0 then table.remove(slct.pl, ys) 
+      elseif #slct.pl<3 then slct.pl[#slct.pl+1]=i end
+    end
+  elseif sm_st==2 then
+    --should chose the world here
+    monstpack = {1, 2, 3, 4}
+    sm_st=3
+  elseif sm_st==3 then
+    HER={}
+    cmonst={}
+    for i,v in pairs(slct.pl) do
+      HER[#HER+1] = Player(v)
+    end
+    for i=1,3 do
+      cmonst[i]=Monst(monstpack[rnd1(#monstpack)])
+    end
+    sm_st=4
+  elseif sm_st==4 then
+    rect(10, 10, LENX-20, LENY-20, 15)
+    backdim()
+    local tm = tt<200 and tt or 200 
+    name2(HER[1].name, TL[1].x, TL[1].y, tm)
+    name1(HER[2].name, TL[2].x, TL[2].y, tm)
+    name3(HER[3].name, TL[3].x, TL[3].y, tm)
+    if tt>350 then sm_st=5 end
+  elseif sm_st==5 then
+    game.s = game.s+1
   end
 end
 
+function name1(txt, x, y, tt)
+  if tt>=200 then
+    for i,v in pairs(s2t(string.upper(txt))) do
+      print(v, i%2==1 and x-25 or x+5, y-(#txt*18)//2+i*18, 0, false, 4)
+    end
+  end
+  local txt = string.upper(txt)
+  if #txt%2==0 then txt=txt.." "..txt end
+  local m = math.floor(tt/200*#txt) + 1
+  print(string.sub(txt,m,m), x-20, m%2==0 and y-20 or y+20, 0, false, 8)
+  --Show the name of the player in a cool way at the start of the game
+end
 
+
+function name2(txt, x, y, tt)
+  local txt = string.upper(txt)
+  local tab = s2t(txt)
+  for i,v in pairs(tab) do
+    local theta = -i/#tab*3*math.pi/2 + tt/18
+    r = {x=tt/200*20 +5,y=tt/200*35+5} 
+    print(v, math.cos(theta)*r.x + x -7, math.sin(theta)*r.y + y, 0, false, 2)
+  end
+end
+
+function name3(txt, x, y, tm)
+  local txt = string.upper(txt)
+  if tm >=200 then tm = #txt*10 end
+  for i=1,8 do
+    if tm//10%(2*#txt) < #txt then 
+      print(string.sub(txt,0, tm//10%#txt), x-35, y + i*12-40, 0,false, 2)
+    else
+      print(string.sub(txt,0, #txt-((tm//10))%#txt), x-35, y + i*12-40, 0,false, 2)
+    end
+  end
+  if tm//10 > #txt then
+    local tab = s2t(txt)
+    for i=1,4 do
+      for j=1,(tm/10-#txt)//1%#tab + 1 do
+        print(tab[j], x - 45 + i*14, y-35 + j*15, 15, false, 2)
+      end
+    end
+  end
+end
+
+function s2t(s)
+  local tb = {}
+  s:gsub(".",function(c) table.insert(tb,c) end)
+  return tb
+end
+
+function has(t, v)
+  for i,h in pairs(t) do
+    if h==v then return i end
+  end
+  return 0
+end
+
+slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}}
+VIS={chox=false, choxchox=false, descsp=false}
+
+SHP = {"circle_grow", "circle_cons"}
+function mid(txt)
+  return LENX//2 - pxltxt(txt)//2
+end
 
 function trace_table(tbl)
   local res = ""
@@ -86,17 +223,6 @@ end
 function initio()
   init_pm()
   game.s=game.s+1
-end
-
-function actu_spells()
-  splbl = {}
-  for v,i in pairs(HER) do
-    table.insert(splbl,{})
-    trace(i)
-    for a,s in pairs(i.spels) do
-      table.insert(splbl[#splbl], s.name)
-    end end
-  trace(trace_table(splbl))
 end
 
 function TIC()
@@ -133,8 +259,8 @@ function intro()
 end
 
 function rect_choices()
-  rect(10,100,LENX-20,LENY-110, 8)
-  rectb(10,100,LENX-20,LENY-110, 0)
+  rect(10,98,LENX-20,LENY-108, 0)
+  rectb(10,98,LENX-20,LENY-108, 15)
 end
 
 TL = {
@@ -145,14 +271,22 @@ TL = {
 
 cmonst = {}
 
+SPR= {
+  ["att"]=224,
+  ["def"]=228,
+  ["heel"]= 225
+}
+
 function show_choices()
   rect_choices()
-
-  local dic = splbl
-  for d=1,#dic do
-    local cd = dic[d]
-    for m= 1,#cd do 
-      print(cd[m],TL[d].x-pxltxt(cd[m])//2,TL[d].y+55+m*6-6,0,false,1, false)
+  for d=1,3 do
+    local cd = HER[d]
+    for m,v in pairs(cd.spels) do 
+      local tx = TL[d].x-pxltxt(v.name)//2
+      local ty = TL[d].y+51+m*8-8
+      print(v.name,tx,ty,15,false,1, false)
+      local sprt = SPR[v.type]
+      spr(sprt, tx-10, ty-1, 0)
     end
   end
 end
@@ -172,7 +306,7 @@ end
 
 function selecti(nm)
   local chs = 3
-  rectb(20, 104-7 + nm*6, LENX-40, 9, 9)
+  rectb(15, 91 + nm*8, LENX-30, 10, 9)
   if not VIS.choxchox then
     rect(8, 2, LENX-16, 9, 12)
     local txt = "X to back, S to inspect, Z to select"
@@ -192,7 +326,7 @@ function selecti(nm)
     elseif btnp(5) then VIS.choxchox = false
     elseif btnp(4) then VIS.descp = true
     end
-    rectb(21+(slct.choxchox-1)*75, 104-7+1 + nm*6, 50-2, 9-2, 10)
+    rectb(16+(slct.choxchox-1)*70, 91 + nm*8, 60, 10, 10)
   else
     rect(8, 2, LENX-16, 9, 12)
     local txt = "X to back"
@@ -215,11 +349,6 @@ function show_descsp(a,b)
   print(txt, LENX//2-pxltxt(txt)//2, 63+5)
 end
 
-slct = {chox=1, choxchox=1, act=0}
-VIS={chox=false, choxchox=false, descsp=false}
-
-SHP = {"circle_grow", "circle_cons"}
-
 function pxltxt(txt)
   return print(txt, -100, -100, 0)
 end
@@ -232,7 +361,9 @@ function show_monst()
     if v.shape <= 2 then circle_grow(x, y, 20, v.shape==2 and true or false)
     elseif v.shape <= 4 then circle_cons(x,y,10,2, v.shape==4 and true or false) end
     local at = v.spels[v.c_att].name
-    print("Preparing \n"..at, TL[i].x-20,TL[i].y+30, 1) 
+    local txt = "Preparing"
+    print(txt, TL[i].x-pxltxt(txt)//2, TL[i].y+30, 1)
+    print(at, TL[i].x-pxltxt(at)//2,TL[i].y+40, 1) 
   end
 end
 
@@ -331,7 +462,7 @@ function monster_turn()
     mnst.def = 0
     mnst.st_att = mnst.st_att + 1
     if mnst.st_att >= c_at.preptim then do_act(mnst, c_at, HER[im]) mnst.st_att = 0 mnst.c_att = rnd1(#mnst.spels-1) end
-    if mnst.pv < 0 then newmonst(rnd1(4), im) end
+    if mnst.pv < 0 then newmonst(monstpack[rnd1(#monstpack)], im) end
   end
 end
 
@@ -364,7 +495,7 @@ function duo()
   backdim()
   show_monst()
   HUD_health()
-  if btnp(6) then VIS.chox = true actu_spells() 
+  if btnp(6) then VIS.chox = true 
   elseif btnp(5) and not VIS.choxchox then VIS.chox = false end
   if slct.act ~= 0 then
     trace("--")
@@ -414,4 +545,11 @@ function circle_grow(x, y, r, inv)
   if tim>r then colors = {colors[2], colors[1]} tim = tim-r end
   circ(x,y,r,colors[1])
   if inv then circ(x,y,tim,colors[2]) else circ(x,y,r-tim,colors[2]) end
+end
+
+if debug then
+  game.s = 2
+  HER = {Player(1), Player(2), Player(3)}
+  monstpack={1, 1, 1}
+  cmonst = {Monst(1), Monst(1), Monst(1)}
 end
