@@ -39,22 +39,17 @@ BIB = {
     {"fireball", "2", "att", "5", true},
     {"sneaky jump", "1", "def", "100"}
     --{"name", "preptime int", "type", "value", "stopable bool false default"}
+  },
+  PL = {
+    {"michel", "oui", 6, {1,2,3}, 10},
+    {"steven", "non", 7, {1,4,5}, 10},
+    {"gilbert", "jsp", 8, {2,3,6}, 10}
   }
 }
 
 
 
-HER = {
-  {
-    spels = {1, 2, 3}
-  },
-  {
-    spels = {1, 4, 5}
-  },
-  {
-    spels = {2, 3, 6}
-  }
-}
+HER = {}
 
 splbl = {}
 
@@ -125,13 +120,7 @@ end
 
 
 function newmonst(monst, indx)
-  cmonst[indx] = table.clone(BIB.MONST[monst])
-  local at = cmonst[indx][4][1]
-  cmonst[indx][#cmonst[indx]+1] = at
-end
-
-for i=1,3 do
-  newmonst(1, i)
+  cmonst[indx] = Monst(monst)
 end
 
 function backdim()
@@ -147,11 +136,11 @@ function selecti(nm)
   rectb(20, 104-6 + nm*6, LENX-40, 9, 9)
   if not VIS.choxchox then
     rect(10, 10, 20, 10, 12)
-    print("X to back, S to inspect", 10, 10)
+    print("X to back, S to inspect, Z to select", 10, 10)
     if btnp(0) then slct.chox = (slct.chox-2)%chs+1
     elseif btnp(1) then slct.chox = (slct.chox)%chs+1
-    elseif btnp(7) then VIS.choxchox = true  
-    end
+    elseif btnp(7) then VIS.choxchox = true
+    elseif btnp(4) then slct.act= slct.chox end
   elseif not VIS.descp then
     rect(10, 10, 20, 10, 12)
     print("X to back, Z to inspect", 10, 10)
@@ -175,17 +164,98 @@ function show_descsp(a,b)
   print(SP[v][2], 65, 45)
 end
 
-slct = {chox=1, choxchox=1}
+slct = {chox=1, choxchox=1, act=0}
 VIS={chox=false, choxchox=false, descsp=false}
 
 
 function show_monst()
   for i,v in pairs(cmonst) do
     trace(trace_table(v))
-    print(v[1 ], 10 -50+70*i, 30, 1)
+    print(v.name, 10 -50+70*i, 30, 1)
     circle_grow(10 -30 + 70*i, 60, 20)
-    local at = BIB.MSTATT[v[6]][1]
+    trace(v.c_att)
+    local at = BIB.MSTATT[v.c_att][1]
     print("Preparing \n"..at, 10-50+70*i, 90, 1) 
+  end
+end
+
+function next_turn()
+end
+
+
+
+function Player(inx)
+  local dp = table.clone(BIB.PL[inx])
+  local m = {}
+  m.name = dp[1]
+  m.desc = dp[2]
+  m.col = dp[3]
+  m.spels = dp[4]
+  m.pv = dp[5]
+  m.c_att = dp[4][1]
+  m.def = 0
+  return m
+end
+
+
+function MnstAtt(inx)
+  local da = table.clone(BIB.MSTATT[inx])
+  local m = {}
+  m.name = da[1]
+  m.preptim = da[2]
+  m.type = da[3]
+  m.val = da[4]
+  m.stop = da[5] or false
+  return m
+end
+
+function PlaySP(inx)
+  local da = table.clone()
+
+function Monst(inx)
+  local dm = table.clone(BIB.MONST[inx])
+  local m = {}
+  m.name = dm[1]
+  m.desc = dm[2]
+  m.shape = dm[3]
+  m.atts = dm[4]
+  m.pv = dm[5]
+  m.c_att = dm[4][1]
+  m.st_att = 0
+  m.def = 0
+  return m
+end 
+
+function init_pm()
+  for i=1,3 do
+    HER[#HER+1] = Player(i)
+    cmonst[#cmonst+1] = Monst(1)
+  end
+end
+
+init_pm()
+
+function do_act(ip, ia)
+  local act = SP[ia]
+  if act[3] == "att" then att_monst(ip, act[4]) end
+end
+
+function att_monst(im, v)
+  local mnst = cmonst[im]
+  if mnst.def < 100 and v-mnst.def > 0 then
+  mnst.pv = mnst.pv - v + msnst.def
+  end
+end
+
+function player_turn(inx)
+  for i=1,3 do do_act(i, inx) end  
+end
+
+function monster_turn()
+  for im=1,3 do
+    local mnst = cmonst[im]
+    mnst.def = 0
+    mnst.st_att = mnst.st_att
   end
 end
 
@@ -196,11 +266,17 @@ function duo()
   print(VIS.choxchox)
   if btnp(6) then VIS.chox = true actu_spells() 
   elseif btnp(5) and not VIS.choxchox then VIS.chox = false end
-  if VIS.chox then
+  if slct.act ~= 0 then
+    player_turn(inx)
+    next_turn()
+  elseif VIS.chox then
     show_choices()
     selecti(slct.chox)
   end
 end
+
+
+--VISU
 
 function circle_cons(x, y, r, n, inv)
   local n = n or 2
