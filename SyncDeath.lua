@@ -6,6 +6,7 @@ game = {
   s=1
 }
 
+--palette: 0black 15white 1text 2-3mnst 5-6-7player 9-10selec 11-12background 
 t=0
 tt=0
 
@@ -110,6 +111,10 @@ function prepo()
     for i,v in pairs(sl[4]) do 
       print(BIB.SP[v][1],110,60-9+9*i, 0)
     end
+    if #slct.pl==3 and tt%50<25 then
+      txt = "Press A to start"
+      print(txt, mid(txt), 115, 0)
+    end
     if btnp(0) then slct.chosh = (slct.chosh-2)%#BIB.PL+1
     elseif btnp(1) then slct.chosh = (slct.chosh)%#BIB.PL+1 
     elseif btnp(6) and #slct.pl==3 then sm_st=2 tt=0
@@ -127,10 +132,10 @@ function prepo()
     HER={}
     cmonst={}
     for i,v in pairs(slct.pl) do
-      HER[#HER+1] = Player(v)
+      HER[#HER+1] = Player(v, i)
     end
     for i=1,3 do
-      cmonst[i]=Monst(monstpack[rnd1(#monstpack)])
+      cmonst[i]=Monst(monstpack[rnd1(#monstpack)], i)
     end
     sm_st=4
   elseif sm_st==4 then
@@ -141,6 +146,9 @@ function prepo()
     name1(HER[2].name, TL[2].x, TL[2].y, tm)
     name3(HER[3].name, TL[3].x, TL[3].y, tm)
     if tt>350 then sm_st=5 end
+    for i=0,7 do
+      if btnp(i) then sm_st=sm_st+1 end
+    end
   elseif sm_st==5 then
     game.s = game.s+1
   end
@@ -239,12 +247,20 @@ function initio()
 end
 
 endm = {"Nicely died.", "Succesfully failed.", "Perfection in the desynchronization."}
+scor = {
+  k=0,
+  r=0
+}
 
 function endo()
   cls(0)
   if slct.endm == "" then slct.endm = endm[rnd1(#endm)] end
   local txt = slct.endm
   print(txt, mid(txt), 40)
+  txt = "Kills: "..tostring(scor.k)
+  print(txt, 40, 60)
+  txt = "Rounds: "..tostring(scor.r)
+  print(txt, 40, 70)
 end
 
 function TIC()
@@ -264,6 +280,7 @@ function show_debug()
     local m = cmonst[i]
     print(trace_table({m.name, m.pv, m.c_att, m.st_att, m.def}), 12, 20*i + 10)
   end
+  print(trace_table(anims), 7, 20*3+20)
 end
 
 --UTILITIES
@@ -315,7 +332,7 @@ end
 
 
 function newmonst(monst, indx)
-  cmonst[indx] = Monst(monst)
+  cmonst[indx] = Monst(monst, indx)
 end
 
 function backdim()
@@ -389,7 +406,7 @@ function show_monst()
   end
 end
 
-function Player(inx)
+function Player(inx, i)
   local dp = table.clone(BIB.PL[inx])
   local m = {}
   m.name = dp[1]
@@ -400,9 +417,12 @@ function Player(inx)
     m.spels[i] = PlaySP(v)
   end
   m.pv = dp[5]
+  m.maxpv = dp[5]
   m.c_att = 1
   m.def = 0
   m.a = true --alive
+  m.th ='pl'
+  m.i = i or 1
   return m
 end
 
@@ -429,7 +449,7 @@ function PlaySP(inx)
   return m
 end
 
-function Monst(inx)
+function Monst(inx, i)
   local dm = table.clone(BIB.MONST[inx])
   local m = {}
   m.name = dm[1]
@@ -441,10 +461,13 @@ function Monst(inx)
   end
   m.spels[#m.spels+1]={name="Failed attack",val=0,type="att",preptim=1}
   m.pv = dm[5]
+  m.maxpv=dm[5]
   m.c_att = rnd1(#m.spels-1)
   m.st_att = 0
   m.def = 0
   m.a = true
+  m.th = "monst"
+  m.i = i or 1
   return m
 end
 
@@ -460,7 +483,10 @@ function do_act(usr, act, tgt)
   if not usr.a then return end
   if act.type == "att" then attack(tgt, act.val)
   elseif act.type == "def" then usr.def = act.val 
-  elseif act.type == "heel" then usr.pv = usr.pv + act.val end
+  elseif act.type == "heel" then
+    local v = usr.pv + act.val 
+    usr.pv = v<=usr.maxpv and v or usr.maxpv
+  end
 end
 
 
@@ -474,8 +500,45 @@ function attack(tgt, v)
     if v-tgt.def > 0 then
       tgt.pv = tgt.pv - v + tgt.def end
     if tgt.spels[tgt.c_att].stop == true then stop_attack(tgt) end
+    if tgt.th == "monst" then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y, "slice", rnd0(1)*2-1) end
   end
 end
+
+function do_anims()
+  for i,v in pairs(anims) do
+    if v.type=="slice" then
+      v.t=v.t+1
+      if slice(v.t, v.x,v.y, v.inv) then table.remove(anims, i) end
+    end
+  end
+end
+
+function Anim(x,y,t, inv)
+  m={}
+  m.x=x
+  m.y=y
+  m.t=0
+  m.type = t
+  m.inv = inv or 1
+  return m
+end
+
+function slice(t, x, y, inv)
+  local inv = inv or 1
+  local x = x-25
+  local y = y-20
+  local fin = 20
+  local pn = 10
+  local inv2 = (inv-1)*(-1)
+  for i= t-pn<0 and 0 or t-pn, t<fin and t or fin do
+    local te = inv*(t+i)
+    local yt = math.pow(te/2,2)/10
+    pix(x+te+25*inv2,y+yt,15)
+  end
+  if t>fin+pn then return true end
+end
+
+anims = {}
 
 function player_turn(inx) 
   for i=1,3 do
@@ -539,17 +602,16 @@ function duo()
   cls(0)
   backdim()
   show_monst()
+  do_anims()
   HUD_health()
-  if btnp(6) then VIS.chox = true 
-  elseif btnp(5) and not VIS.choxchox then VIS.chox = false end
+  if btnp(6) and not VIS.chox then VIS.chox = true 
+  elseif (btnp(5) or btnp(6)) and not VIS.choxchox then VIS.chox = false end
   if slct.act ~= 0 then
-    trace("--")
     player_turn(slct.act)
     next_turn()
     slct.act = 0
     VIS.chox=false
   elseif VIS.chox then
-    trace(trace_table(HER[1].spels))
     show_choices()
     selecti(slct.chox)
   end
@@ -602,8 +664,8 @@ function circle_grow(x, y, r, inv)
 end
 
 if debug then
-  game.s = 3
-  HER = {Player(1), Player(2), Player(3)}
+  game.s = 2
+  HER = {Player(1, 1), Player(2, 2), Player(3, 3)}
   monstpack={1, 1, 1}
-  cmonst = {Monst(1), Monst(1), Monst(1)}
+  cmonst = {Monst(1, 1), Monst(1, 2), Monst(1, 3)}
 end
