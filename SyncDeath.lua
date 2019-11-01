@@ -6,7 +6,7 @@ game = {
   s=1
 }
 
---palette: 0black 15white 1text 2-3mnst 5-6-7player 9-10selec 11-12background 
+--palette: 0black 15white 1text 2-3mnst 5-6-7-8player 9-10selec 11-12background 
 t=0
 tt=0
 
@@ -36,24 +36,27 @@ BIB = {
     --{"name", "preptime int", "type", "value", "stopable bool false default"}
   },
   PL = {
-    {"michel", "warrior of the void", 6, {1,2,3}, 10},
-    {"steven", "strongest man aliv", 7, {1,4,5}, 10},
-    {"gilbert", "jsp", 8, {2,3,6}, 10},
-    {"kevin", "benkevinquoi", 9, {4, 5, 6}, 11}
+    {"michel", "warrior of the void", 6, {1,2,3}, 6},
+    {"steven", "strongest man aliv", 7, {1,4,5}, 11},
+    {"elodie", "i don't really know her", 8, {2,3,6}, 8},
+    {"lucile", "also called kevin", 5, {4, 5, 6}, 7},
+    {"philip", "a handsome boi", 6, {1,4,6}, 9},
+    {"janine", "queen of everything", 6, {1,4,6}, 9},
+    {"nadine", "came back from hell", 6, {1,4,6}, 9}
   },
   SP = {
     {"Sword", "Sword attack", "att", 3},
-    {"Axe", "Axe attack", "att", 5},
-    {"Feint", "Feint", "def", 100},
+    {"Axe", "Axe attack", "att", 4},
+    {"Feint", "Feint", "def", 3},
     {"Shield", "Shield", "def", 4},
-    {"BluePo", "Blue Potion", "heel", 2},
-    {"VeryBluePo", "Potion that is very blue", "heel", 4}
+    {"BluePo", "Blue Potion", "heel", 1},
+    {"VeryBluePo", "Potion that is very blue", "heel", 3}
     --{"name str", "description str", "type str (att, def, heel)", "value int", "optio"}
   }
 }
 
 
-debug = true
+debug = false
 
 HER = {}
 
@@ -93,7 +96,7 @@ function prepo()
     for i=0,7 do
       if btnp(i) then sm_st=1 end
     end
-  elseif sm_st==1 then
+  elseif sm_st==1 then --it would be better if they chose predefined squads instead of players directly
     rect(10, 10, LENX-20, LENY-20, 15)
     local txt = "Choose players: "
     print(txt,mid(txt),20,0)
@@ -486,7 +489,9 @@ function do_act(usr, act, tgt)
   elseif act.type == "def" then usr.def = act.val 
   elseif act.type == "heel" then
     local v = usr.pv + act.val 
-    usr.pv = v<=usr.maxpv and v or usr.maxpv
+    local val = v<=usr.maxpv and v or usr.maxpv
+    anims[#anims+1] = Anim(math.random(TL[usr.i].x-20, TL[usr.i].x+20), TL[usr.i].y+ (usr.th =="pl" and 65 or 0), "heel", 1, val-usr.pv)
+    usr.pv = val
   end
 end
 
@@ -519,12 +524,13 @@ function attack(tgt, v)
     if v-tgt.def > 0 then
       tgt.pv = tgt.pv - v + tgt.def end
     if tgt.spels[tgt.c_att].stop == true then stop_attack(tgt) end
-    if tgt.th == "monst" then
-      if v<=3 then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y, "slice", rnd0(1)*2-1) 
+    if tgt.th ~= "ms" then
+      anims[#anims+1]=Anim(math.random(TL[tgt.i].x-20, TL[tgt.i].x+20), TL[tgt.i].y+(tgt.th =="pl" and 65 or 0), "hit", inv, v)
+      if v<=3 then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y +(tgt.th =="pl" and 65 or 0), "slice", rnd0(1)*2-1) 
       else 
         local inv = rnd0(1)*2-1
         for j=0,5 do
-          anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y+j, "slice", inv)
+          anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y+j+(tgt.th =="pl" and 65 or 0), "slice", inv)
         end
       end
     end
@@ -533,22 +539,39 @@ end
 
 function do_anims()
   for i,v in pairs(anims) do
+    v.t = v.t+1
     if v.type=="slice" then
-      v.t=v.t+1
       if slice(v.t, v.x,v.y, v.inv) then table.remove(anims, i) end
+    elseif v.type == "heel" then
+      if anim_heal(v.t, v.x, v.y, v.val, v.inv) then table.remove(anims,i) end
+    elseif v.type =="hit" then
+      if anim_hit(v.t, v.x, v.y, v.val,v.inv) then table.remove(anims,i) end
     end
   end
 end
 
-function Anim(x,y,t, inv)
+function Anim(x,y,t, inv, val)
   m={}
   m.x=x
   m.y=y
   m.t=0
   m.type = t
   m.inv = inv or 1
+  m.val = val or 0
   return m
 end
+
+function anim_heal(tm, x, y, val, inv)
+  local inv = inv or 1
+  local x=x
+  local y = y
+  local fin = 20
+  if tm>20 then return true end
+  local tmm =  tm>=9 and 18-tm or tm
+  spr(256 + 2*(tmm//3),x-9,y-4,0, 1, 0, 0,2, 2)
+  if tm>6 and tm<16 then local txt = "+"..tostring(val) print(txt, x-pxltxt(txt)//2, y, 15, false, 1, true) end
+end
+  
 
 function slice(t, x, y, inv)
   local inv = inv or 1
@@ -567,6 +590,22 @@ end
 
 anims = {}
 
+function anim_hit(tm, x, y, val, inv)
+  local inv = inv or 1
+  local x = x
+  local y = y
+  local fin = 20
+  local te = tm*0.4
+  local bib = {1,-1}
+  if tm<15 then
+    for i=2,5 do
+      spr(262, x+te*bib[i//2],y+te*bib[(i%2)+1], 0)
+    end
+  end
+  print("-"..tostring(val), x, y, 15, false, 1, true)
+  if tm>30 then return true end
+end
+
 function player_turn(inx) 
   for i=1,3 do
     if HER[i].a then
@@ -580,9 +619,8 @@ function monster_turn()
   for im=1,3 do
     local mnst = cmonst[im]
     local c_at = mnst.spels[mnst.c_att]
-    if mnst.pv < 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1
-    elseif c_at.type == "def" then return
-    else
+    if mnst.pv <= 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1
+    elseif c_at.type ~= "def" then
       mnst.st_att = mnst.st_att + 1
       if mnst.st_att >= c_at.preptim and HER[im].a then 
         do_act(mnst, c_at, HER[im]) 
@@ -692,10 +730,11 @@ function circle_grow(x, y, r, inv)
   circ(x,y,r,colors[1])
   if inv then circ(x,y,tim,colors[2]) else circ(x,y,r-tim,colors[2]) end
 end
-
+debug =false
 if debug then
   game.s = 2
   HER = {Player(1, 1), Player(2, 2), Player(3, 3)}
   monstpack={1, 2, 3}
   cmonst = {Monst(1, 1), Monst(1, 2), Monst(1, 3)}
+  anims[#anims+1]= Anim(TL[1].x, TL[1].y, "hit", 1)
 end
