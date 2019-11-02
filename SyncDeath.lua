@@ -1,3 +1,8 @@
+-- next: Fix the dying animation, problem should be caused by interactions with other animations.
+-- Make squads instead of people
+-- Add the counter attack type, where the monster give back 50% of the attack
+-- Leadboards
+
 
 LENX = 240
 LENY = 136
@@ -20,16 +25,21 @@ spd = 7
 --"intro", "initio", 
 ST = {"prepo","duo", "endo"}
 
+
+function rnd1(n)
+  return math.random(n)
+end
+
 BIB = {
   MONST={
-    {"vampire", "scary scary", 1, {1, 3}, 9},
+    {"vampire", "scary scary", 1, {1, 2}, 9},
     {"void witch", "tenebrous", 2, {1, 2}, 9},
     {"skekleton", "noisy", 3, {1, 2}, 9},
     {"dead pumpkin", "ded", 4, {1, 2}, 9}
     --{"name", "description", "shape", "attacks list", "pv"}
   },
   MSTATT={
-    {"claw", 2, "att", 2},
+    {"claw", 1, "att", 1},
     {"fireball", 2, "att", 5, true},
     {"sneaky jump", 1, "def", 100},
     {"give back", 1, "def", 50}
@@ -284,7 +294,9 @@ function show_debug()
     local m = cmonst[i]
     print(trace_table({m.name, m.pv, m.c_att, m.st_att, m.def}), 12, 20*i + 10)
   end
-  print(trace_table(anims), 7, 20*3+20)
+  for i,v in pairs(anims) do
+    print(trace_table(v), 7, 20*3+10+10*i)
+  end
 end
 
 --UTILITIES
@@ -401,13 +413,18 @@ function show_monst()
     print(v.name, TL[i].x-pxltxt(v.name)//2, TL[i].y-30, 1)
     local x = TL[i].x
     local y = TL[i].y
-    if v.shape <= 2 then circle_grow(x, y, 20, v.shape==2 and true or false)
-    elseif v.shape <= 4 then circle_cons(x,y,10,2, v.shape==4 and true or false) end
-    local at = v.spels[v.c_att].name
+    rep_monst(v,x,y)
+    local at = v.spels[v.c_att]
     local txt = "Preparing"
     print(txt, TL[i].x-pxltxt(txt)//2, TL[i].y+30, 1)
-    print(at, TL[i].x-pxltxt(at)//2,TL[i].y+40, 1) 
+    print(at.name, TL[i].x-pxltxt(at.name)//2,TL[i].y+40, 1)
+    if at.preptim>=2 then local txt = tostring(v.st_att+1).."/"..tostring(at.preptim) print(txt, TL[i].x-pxltxt(txt)//2,TL[i].y+50,1) end
   end
+end
+
+function rep_monst(m, x, y)
+  if m.shape <= 2 then circle_grow(x, y, 20, m.shape==2 and true or false)
+  elseif m.shape <= 4 then circle_cons(x,y,10,2, m.shape==4 and true or false) end
 end
 
 function Player(inx, i)
@@ -546,11 +563,15 @@ function do_anims()
       if anim_heal(v.t, v.x, v.y, v.val, v.inv) then table.remove(anims,i) end
     elseif v.type =="hit" then
       if anim_hit(v.t, v.x, v.y, v.val,v.inv) then table.remove(anims,i) end
+    elseif v.type =="break" then
+      if anim_break(v.t,v.x,v.y,v.val,v.inv) then table.remove(anims,i)end
+    elseif v.type =="die" then
+      if anim_die(v.t,v.x,v.y,v.val,v.val2) then table.remove(anims,i)end
     end
   end
 end
 
-function Anim(x,y,t, inv, val)
+function Anim(x,y,t, inv, val, val2)
   m={}
   m.x=x
   m.y=y
@@ -558,6 +579,7 @@ function Anim(x,y,t, inv, val)
   m.type = t
   m.inv = inv or 1
   m.val = val or 0
+  m.val2 = val2 or 0
   return m
 end
 
@@ -571,7 +593,60 @@ function anim_heal(tm, x, y, val, inv)
   spr(256 + 2*(tmm//3),x-9,y-4,0, 1, 0, 0,2, 2)
   if tm>6 and tm<16 then local txt = "+"..tostring(val) print(txt, x-pxltxt(txt)//2, y, 15, false, 1, true) end
 end
-  
+
+function shuffle(tbl)
+  for i = #tbl, 2, -1 do
+    local j = rnd1(i)
+    tbl[i], tbl[j] = tbl[j], tbl[i]
+  end
+  return tbl
+end
+
+tab1 = {}
+for i=1,36 do
+  tab1[#tab1+1]=i
+end
+
+diel = shuffle(tab1)
+
+function anim_die(tm,x,y,m,c)
+  local midtm = 60
+  local xl = 35
+  local yl = 40
+  local nyl = yl+10
+  if tm<36 then
+    rect(x-xl,y-yl,xl*2,yl*2+10,c)
+    rep_monst(m,x,y)
+    for i=0,tm-1 do
+      local i1=i+1--i1=2*i+1
+      line(x-xl+diel[i1],y-yl,x-xl+diel[i1],y+nyl,c)
+      line(x+diel[i1],y-yl,x+diel[i1],y+nyl,c)
+    end
+  elseif tm<midtm then
+    rect(x-xl,y-yl,xl*2,yl*2+10,c)
+  elseif tm<midtm+36 then
+    --rect(x-xl,y-yl,xl*2,yl*2+10,c)
+    local t2=tm-midtm
+    for i=0,36-t2-1 do
+      local i1=i+1--i1=2*i+1
+      line(x-xl+diel[i1],y-yl,x-xl+diel[i1],y+nyl,c)
+      line(x+diel[i1],y-yl,x+diel[i1],y+nyl,c)
+    end
+  else return true
+  end
+end
+
+
+
+
+function anim_break(tm, x, y, val, inv)
+  local inv = inv or 1
+  local x=x
+  local y=y
+  local fin=20
+  if tm<20 then print("Break!", x-pxltxt("Break!"),y,15)
+  else return true end
+end
 
 function slice(t, x, y, inv)
   local inv = inv or 1
@@ -619,7 +694,7 @@ function monster_turn()
   for im=1,3 do
     local mnst = cmonst[im]
     local c_at = mnst.spels[mnst.c_att]
-    if mnst.pv <= 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1
+    if mnst.pv <= 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1 anims[#anims+1] = Anim(TL[mnst.i].x, TL[mnst.i].y, "die", 1, mnst, cols[mnst.i])
     elseif c_at.type ~= "def" then
       mnst.st_att = mnst.st_att + 1
       if mnst.st_att >= c_at.preptim and HER[im].a then 
@@ -634,11 +709,9 @@ end
 function stop_attack(mnst)
   mnst.st_att = 0
   mnst.c_att=#mnst.spels
+  anims[#anims+1]=Anim(math.random(TL[mnst.i].x-20, TL[mnst.i].x+20), TL[mnst.i].y+(mnst.th =="pl" and 65 or 20), "break", 1)
 end
 
-function rnd1(n)
-  return math.random(n)
-end
 
 function rnd0(n)
   return math.random(0,n)
@@ -671,8 +744,8 @@ function duo()
   cls(0)
   backdim()
   show_monst()
-  do_anims()
   HUD_health()
+  do_anims()
   if btnp(6) and not VIS.chox then VIS.chox = true 
   elseif (btnp(5) or btnp(6)) and not VIS.choxchox then VIS.chox = false end
   if slct.act ~= 0 then
@@ -730,11 +803,11 @@ function circle_grow(x, y, r, inv)
   circ(x,y,r,colors[1])
   if inv then circ(x,y,tim,colors[2]) else circ(x,y,r-tim,colors[2]) end
 end
-debug =false
+debug =true
 if debug then
   game.s = 2
   HER = {Player(1, 1), Player(2, 2), Player(3, 3)}
   monstpack={1, 2, 3}
   cmonst = {Monst(1, 1), Monst(1, 2), Monst(1, 3)}
-  anims[#anims+1]= Anim(TL[1].x, TL[1].y, "hit", 1)
+  anims[#anims+1]= Anim(TL[1].x, TL[1].y, "die", 1, cmonst[1], cols[1])
 end
