@@ -1,10 +1,96 @@
-ST= {"water"}
+ST= {"water", "balls", "balls2"}
 game={s=1}
 
 function TIC()
   _G[ST[game.s]]()
   if keyp(14) then game.s = (game.s)%#ST + 1 end
 end
+
+LENX=240
+game.s=2
+--[[
+p={4,3,9,2,8,1,10,0,9,11,15,13,14,12,7,13}
+t=0g=circfill::_::
+cls(6)l=80
+for n=0,14 do
+r=(99-n*2)/40
+q=sin(t*r)/20-.25
+x=cos(q)*l+64
+y=sin(q)*l-50
+line(64,y-l,x,y,6)
+i=n%8
+g(x,y,n*.3+4,p[i+1])
+g(x-3,y-1,n*.15+1,p[i+9])
+g(x-3,y-1,n*.15,7)
+l+=3+n/3
+end
+t+=.01
+flip()goto _
+]]
+
+function balls()
+  cls(15)
+  local l=80
+  for i=1,14 do
+    local r = i*3+20
+    r=(99-i*2)/40
+    local theta = (math.pi/4)*s(math.sqrt(9.81/r)*t)
+    theta=s(t*r)*0.5
+    local x = r*s(theta) +LENX//2
+    x=l*s(theta)+LENX//2
+    local y = r*c(theta) + 10
+    y=c(theta)*l -20
+    line(LENX//2,10,x,y,0)
+    --circ(x,y,5,i)
+    circ(x,y,i*.3+4,i)
+    l=l+3+i/3
+  end
+  t=t+.03
+  pix(LENX//2,10,15)
+end
+
+Tm=25
+Sm=30
+inc=.01
+
+game.s=3
+
+function balls2()
+  if btn(0) then inc=inc+.01 elseif btn(1) then inc=inc-.01 end
+  cls(15)
+  print(t, 0, 0, 0)
+  for i=1,14 do
+    local r = math.pow((Tm)/(2*math.pi*(Sm-i)),2)*9.81
+    local theta = (math.pi/4)*s(math.sqrt(9.81/r)*t)
+    local x = r*s(theta)*100 +LENX//2
+    local y = r*c(theta)*100+i*2 + 10
+    line(LENX//2,10,x,y,0)
+    --circ(x,y,5,i)
+    circ(x,y,i//4+4,i)
+  end
+  t=t+inc
+  pix(LENX//2,10,15)
+end
+
+p1={4,3,9,2,8,1,10,0,9,11,15,13,14,12,7,13} g=circ
+function balls32()
+  cls(6)
+  local l=80
+  for n=0,14 do
+    local r=(99-n*2)/40
+    local q=s(t*r)/20-.25
+    local y=c(q)*r
+    local x=s(q)*r
+    line(LENX//2,y-l,x,y,6)
+    local i=n%8
+    g(x,y,n*.3+4,p1[i+1])
+    g(x-3,y-1,n*.15+1,p1[i+9])
+    g(x-3,y-1,n*.15,7)
+    l=l+3+n/3
+  end
+  t=t+.01
+end
+
 
 
 p=pix m=math c=m.cos s=m.sin z=m.random t=0 b=15 cls(8)
@@ -209,16 +295,18 @@ function changered()
 end
  
 function SCN(scnline)
-  if scnline < maxline and scnline%3==0 then
-    changered()
-  elseif scnline == maxline then
-    pal(11,r1,g1,b1)
-  end
-  if scnline >60 and scnline<135 and scnline%1==0 then
-    changeblue()
-  end
-  if scnline == 1 then
-    pal(8,r4,g4,b4)
+  if game.s == 1 then
+    if scnline < maxline and scnline%3==0 then
+      changered()
+    elseif scnline == maxline then
+      pal(11,r1,g1,b1)
+    end
+    if scnline >60 and scnline<135 and scnline%1==0 then
+      changeblue()
+    end
+    if scnline == 1 then
+      pal(8,r4,g4,b4)
+    end
   end
 end
 
