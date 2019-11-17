@@ -84,6 +84,16 @@ function can_go(x,y)
 	return true
 end
 
+function can_go_color(x,y)
+	for i=0,3 do
+		for j=0,(i//2==0 and p.lx or p.ly) do
+			local xx,yy=((i//2==0 and j or (i==3 and p.lx-1 or 0))),((i//2==1 and j or (i==1 and p.ly-1 or 0)))
+			if pix(p.x+xx, p.y+yy-cam.y+LENY//2)==1 then return false end
+		end
+	end
+	return true
+end
+
 BLK = {[1]=true}
 
 min=math.min
