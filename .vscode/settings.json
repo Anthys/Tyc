@@ -1,6 +1,6 @@
 {
   "code-runner.executorMap": {
-      "lua": "D:\\Logiciels\\tic80_0.70.6\\tic80 $fileNameWithoutExt.tic -code $fullFileName",
+      "lua": "D:\\Logiciels\\tic80_0.70.6\\tic80 $fileNameWithoutExt.tic -code-watch $fullFileName",
       "moon": "D:\\Logiciels\\tic80_0.70.6\\tic80 $fileNameWithoutExt.tic -code $fullFileName",
   }
 }

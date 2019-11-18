@@ -12,6 +12,7 @@ t=0
 debug = false
 
 all_units = {}
+abs = math.abs
 
 function TIC()
   t=t+1
@@ -37,8 +38,10 @@ function Unit:new(col, val, x, y)
 end
 
 function Unit:draw()
-   spr(1,30+math.cos(t/64)*30,40)
-   print(self.col)
+  --print(abs(math.cos(t/64)*30))
+  spr(1,30+abs(math.cos(t/32)*30),40)
+  spr(1,30+abs(math.cos(t/32)*100),50)
+  --print(self.col)
 end
 
 miss = Unit:new(1,1,1,1)
