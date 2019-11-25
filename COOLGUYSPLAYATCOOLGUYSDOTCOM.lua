@@ -17,6 +17,13 @@ for i=0,4 do
   if btnp(i) then p.pos[(i//2+1)%2+1]=p.pos[(i//2+1)%2+1]+i%2*2-1 end
 end
 
+-- Function oscillating between two vals
+function ocsill(a,b,t)
+  local dist = (a+b)/2
+  local ampl = a-dist
+  return cos(t)*ampl+dist
+end
+
 function lerp(a,b,t) return (1-t)*a + t*b end
 
 function stxt(txt, xs)
@@ -51,4 +58,24 @@ function stxt(txt, xs)
       end
     end
   end
+end
+
+function pal(i,r,g,b)
+	--sanity checks
+	if i<0 then i=0 end
+	if i>15 then i=15 end
+	--returning color r,g,b of the color
+	if r==nil and g==nil and b==nil then
+		return peek(0x3fc0+(i*3)),peek(0x3fc0+(i*3)+1),peek(0x3fc0+(i*3)+2)
+	else
+		if r==nil or r<0 then r=0 end
+		if g==nil or g<0 then g=0 end
+		if b==nil or b<0 then b=0 end
+		if r>255 then r=255 end
+		if g>255 then g=255 end
+		if b>255 then b=255 end
+		poke(0x3fc0+(i*3)+2,b)
+		poke(0x3fc0+(i*3)+1,g)
+		poke(0x3fc0+(i*3),r)
+	end
 end
