@@ -29,6 +29,33 @@ function branch(x1,y1,s,a,d,c1,c2,col)
     branch(x2,y2,s*c1,a-c2,d-1,c1,c2,col)
   end
 end
+
+function branch2(x1,y1,s,a,d,c1,c2,col,coeff)
+  local coeff = coeff or 0.5
+  local col = col or 8
+  local c1=c1 or ic1
+  local c2=c2 or ic2
+  local x2,y2 = x1+cos(a)*s,y1-sin(a)*s
+  line(x1,y1,x2,y2,col)
+  if d>0 then
+    branch2(x2,y2,s*c1,a+c2,d-rnd(1)-coeff,c1,c2,col)
+    branch2(x2,y2,s*c1,a-c2,d-rnd(1)-coeff,c1,c2,col)
+  end
+end
+
+function branch3(x1,y1,s,a,d,c1,c2,col,coeff)
+  local coeff = coeff or 0.5
+  local col = col or 8
+  local c1=c1 or ic1
+  local c2=c2 or ic2
+  local x2,y2 = x1+cos(a)*s+3+rnd(0.5)+5/(d+1),y1-sin(a)*s+2
+  line(x1,y1,x2,y2,col)
+  if d>0 then
+    branch3(x2,y2,s*c1,a+c2,d-1,c1,c2,col)
+    branch3 (x2,y2,s*c1,a-c2,d-1,c1,c2,col)
+  end
+end
+
 ic2=0
 ic1=0
 iic2=pi/6
@@ -57,7 +84,7 @@ function ocsill(a,b,t)
 end
 function TIC()
   t=t+1
-  cls()
+  if not (anim == 16) then  cls() end
   if anim == 1 then
     for i,v in pairs({pi/2,pi,3/2*pi,0}) do
       branch(LENX//2,LENY//2,tweak(24),tweak(v),tweak(8),0.7,pi/6)
@@ -218,6 +245,15 @@ function TIC()
           end
         end
       end
+  elseif anim == 15 then
+    branch2(LENX//2,LENY,26,pi/2,tweak(6),0.7,pi/5,8)
+  elseif anim == 16 then
+    if t%9==1 then
+      cls()
+      branch3(LENX//2+40,LENY,26,pi/2,8,0.7,pi/5,8)
+      branch3(LENX//2-100,LENY,40,pi/2,8,0.7,pi/5,8)
+    end
+    title_txt="Windy day"
   end
   if t<100 and show_title and title_txt~="" then title(title_txt,t,100) end
   if btnp(0) then anim = (anim)%maxanim+1 clean_board() end
@@ -233,7 +269,7 @@ end
 
 title_txt = ""
 show_title = true
-maxanim=14
+maxanim=16
 anim=maxanim
 --t=300
 siz=24
