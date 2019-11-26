@@ -9,8 +9,11 @@ function rnd(mx)
   return math.random()*mx
 end
 
+cls()
+p=0.111
+m=0.7
 function br(x1,y1,s,a,d)
-  local x2,y2=x1+rnd(s/m)*cos(a),y1+rnd(s/m)*sin(a)
+  local x2,y2=x1+rnd(20)*cos(a),y1-rnd(s/m)*sin(a)
   line(x1,y1,x2,y2,8+(d/2))
   if d>0 then
     br(x2,y2,(s*m),(a-rnd(p)),d-1)
@@ -84,7 +87,7 @@ function ocsill(a,b,t)
 end
 function TIC()
   t=t+1
-  if not (anim == 16) then  cls() end
+  if not (anim == 16 or anim == 17) then  cls() end
   if anim == 1 then
     for i,v in pairs({pi/2,pi,3/2*pi,0}) do
       branch(LENX//2,LENY//2,tweak(24),tweak(v),tweak(8),0.7,pi/6)
@@ -254,6 +257,14 @@ function TIC()
       branch3(LENX//2-100,LENY,40,pi/2,8,0.7,pi/5,8)
     end
     title_txt="Windy day"
+  elseif anim == 17 then
+    if t%50==1 then
+      cls()
+      for x=0,5 do
+        br(60+x,120,24,pi/2,8)
+        br(150+x,120,24,pi/2,8)
+      end
+    end
   end
   if t<100 and show_title and title_txt~="" then title(title_txt,t,100) end
   if btnp(0) then anim = (anim)%maxanim+1 clean_board() end
@@ -269,7 +280,7 @@ end
 
 title_txt = ""
 show_title = true
-maxanim=16
+maxanim=17
 anim=maxanim
 --t=300
 siz=24
