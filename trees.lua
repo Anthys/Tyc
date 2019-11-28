@@ -87,7 +87,7 @@ function ocsill(a,b,t)
 end
 function TIC()
   t=t+1
-  if not (anim == 16 or anim == 17) then  cls() end
+  if not (anim == 16 or anim == 17 or anim==18) then  cls() end
   if anim == 1 then
     for i,v in pairs({pi/2,pi,3/2*pi,0}) do
       branch(LENX//2,LENY//2,tweak(24),tweak(v),tweak(8),0.7,pi/6)
@@ -265,6 +265,41 @@ function TIC()
         br(150+x,120,24,pi/2,8)
       end
     end
+  elseif anim == 18 then
+    cls()
+    ic2 = iic2--tweak(pi/3)
+    ic1 = iic1
+    br3(LENX//2,LENY,45,pi/2,7,nil,nil,nil,15*sin(t/32))
+  elseif anim == 19 then
+    cls()
+    ic2 = iic2--tweak(pi/3)
+    ic1 = iic1
+    pine(LENX//2,LENY,45,pi/2,7,nil,nil,nil,15*sin(t/32))
+  elseif anim == 20 then
+    cls()
+    ic2 = iic2--tweak(pi/3)
+    ic1 = iic1
+    pine(LENX//2,LENY,20,pi/2,10,nil,pi/3,8,0)
+  elseif anim == 21 then
+    cls()
+    ic2 = iic2--tweak(pi/3)
+    ic1 = iic1
+    pine(LENX//2,LENY,20,pi/2,10,0.4,pi/3,8,0)
+    pine(LENX//2-70,0,20,-pi/2,10,tweak(0.4),tweak(pi/3),8,0)
+  elseif anim == 22 then
+    cls()
+    ic2 = iic2
+    ic1 = iic1
+    pine2(LENX//2,LENY,20,pi/2,10,0.4,pi/3,8,0)
+  elseif anim == 23 then
+    cls()
+    ic2 = iic2
+    ic1 = iic1
+    pine3(LENX//2,LENY,20,pi/2,10,0.5,pi/3,8,0,-1)
+    pine3(LENX//2+60,LENY,20,pi/2,10,0.5,pi/3,8,0,-1)
+    pine3(LENX//2-90,LENY,20,pi/2,10,0.5,tweak(pi/3),8,0,-1)
+  elseif anim == 24 then
+    cls()
   end
   if t<100 and show_title and title_txt~="" then title(title_txt,t,100) end
   if btnp(0) then anim = (anim)%maxanim+1 clean_board() end
@@ -273,6 +308,77 @@ function TIC()
 end
 poss = {{LENX//2,LENY//2-20},{LENX//2+41,LENY//2-20}}
 
+function pine3(x1,y1,s,a,d,c1,c2,col,hh,vv)
+  local col = col or 8
+  local c1=c1 or ic1
+  local c2=c2 or ic2
+  local vv = vv or 1
+  --c2=tweak(c2)
+  local x2,y2 = x1+cos(a)*s,y1-sin(a)*s
+  line(x1,y1,x2,y2,d//1)
+  y2=y2+3*sign(y2-y1)*vv
+  x2=x2+3*sign(x2-x1)*vv
+  --x2=x2+sin(t/32)*5
+  if d>0 and hh<3 then
+    pine3(x2,y2,s*c1,a+c2,d-1,c1,c2,col,hh+1,vv)
+    pine3(x2,y2,s*0.9,a,d-1,c1,c2,col,hh,vv)
+    pine3(x2,y2,s*c1,a-c2,d-1,c1,c2,col,hh+1,vv)
+  end
+end
+
+function pine2(x1,y1,s,a,d,c1,c2,col,hh,vv)
+  local col = col or 8
+  local c1=c1 or ic1
+  local c2=c2 or ic2
+  local vv = vv or 1
+  --c2=tweak(c2)
+  local x2,y2 = x1+cos(a)*s,y1-sin(a)*s
+  line(x1,y1,x2,y2,d//1)
+  y2=y2+3*sign(y2-y1)*sin(t/32)
+  x2=x2+3*sign(x2-x1)*sin(t/32)
+  --x2=x2+sin(t/32)*5
+  if d>0 and hh<3 then
+    pine2(x2,y2,s*c1,a+c2,d-1,c1,c2,col,hh+1)
+    pine2(x2,y2,s*0.9,a,d-1,c1,c2,col,hh)
+    pine2(x2,y2,s*c1,a-c2,d-1,c1,c2,col,hh+1)
+  end
+end
+
+function sign(x)
+  if x <0 then return -1
+  elseif x==0 then return 0
+  else return 1 end
+end
+
+function pine(x1,y1,s,a,d,c1,c2,col,hh)
+  local col = col or 8
+  local c1=c1 or ic1
+  local c2=c2 or ic2
+  c2=c2
+  local x2,y2 = x1+cos(a)*s,y1-sin(a)*s
+  line(x1,y1,x2,y2,d//1)
+  if d>0 and hh<3 then
+    pine(x2,y2,s*c1,a+c2,d-1,c1,c2,col,hh+1)
+    pine(x2,y2,s*0.9,a,d-1,c1,c2,col,hh)
+    pine(x2,y2,s*c1,a-c2,d-1,c1,c2,col,hh+1)
+  end
+end
+
+function br3(x1,y1,s,a,d,c1,c2,col,hh)
+  local col = col or 8
+  local c1=c1 or ic1
+  local c2=c2 or ic2
+  c2=c2+hh*pi/50
+  local x2,y2 = x1+cos(a)*s,y1-sin(a)*s
+  line(x1,y1,x2,y2,d//1)
+  if d>0 then
+    br3(x2,y2,s*c1,a+c2,d-1,c1,c2,col,hh)
+    br3(x2,y2,s*c1,a+c2/2,d-1,c1,c2,col,hh)
+    br3(x2,y2,s*c1,a-c2/2,d-1,c1,c2,col,hh)
+    br3(x2,y2,s*c1,a-c2,d-1,c1,c2,col,hh)
+  end
+end
+
 function clean_board()
   t=0
   title_txt=""
@@ -280,7 +386,7 @@ end
 
 title_txt = ""
 show_title = true
-maxanim=17
+maxanim=23
 anim=maxanim
 --t=300
 siz=24
