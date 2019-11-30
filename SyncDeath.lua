@@ -16,7 +16,7 @@ RND_ST = {"pl","pl_anim","mnst_anim"}
 
 BIB = {
   MONST={
-    {"vampire", "scary scary", 1, {1, 2}, 9},
+    {"vampire", "scary scary", 1, {1, 4}, 9},
     {"void witch", "tenebrous", 2, {1, 2}, 9},
     {"skekleton", "noisy", 3, {1, 2}, 9},
     {"dead pumpkin", "ded", 4, {1, 2}, 9}
@@ -26,12 +26,12 @@ BIB = {
     {"claw", 1, "att", 1},
     {"fireball", 2, "att", 5, true},
     {"sneaky jump", 1, "def", 100},
-    {"give back", 1, "def", 50}
-    --{"name", "preptime int", "type", "value", "stopable bool false default"}
+    {"give back", 1, "da", 1}
+    --{"name", "preptime int", "type", "value", "stopable bool false default", "can break"}
   },
   PL = {
-    {"michel", "warrior of the void", 6, {1,2,3}, 6},
-    {"steven", "strongest man aliv", 7, {1,4,5}, 11},
+    {"michel", "warrior of the void", 6, {1,2,9}, 6},
+    {"steven", "strongest man alive", 7, {1,4,5}, 11},
     {"elodie", "i don't really know her", 8, {2,3,6}, 8},
     {"lucile", "also called kevin", 5, {4, 5, 6}, 7},
     {"philip", "a handsome boi", 6, {1,4,6}, 9},
@@ -40,19 +40,24 @@ BIB = {
     --{"name", "desc", "col", "attacks", "hp"}
   },
   SP = {
-    {"Sword", "Sword attack", "att", 3},
-    {"Axe", "Axe attack", "att", 4},
-    {"Feint", "Feint", "def", 3},
-    {"Shield", "Shield", "def", 4},
+    {"Sword", "Sword attack", "att", 1, true},
+    {"Axe", "Axe attack", "att", 2},
+    {"Feint", "Feint", "def", 1},
+    {"Shield", "Shield", "def", 3},
     {"BluePo", "Blue Potion", "heel", 1},
-    {"VeryBluePo", "Potion that is very blue", "heel", 3}
-    --{"name str", "description str", "type str (att, def, heel)", "value int", "optio"}
+    {"RedPo", "Red potion", "heel", 2},
+    {"Shout", "Shouting very loud", "att", 0, true},
+    {"SmokBomb", "Drop a smoky bomb", "aa", 0, true, {["aa"]={1,1}}},
+    {"Divine", "Heal everyone", "s", 2, false}
+    --{name str, description str, type str (att, def, heel), value int, can break, opt}
   }
-}
+} -- attacks type : att (attacks enemy in front), def (self defense), heel (self heel), aa (attack self and front), da (defense and give back), s (special)
 
 SHP = {"circle_grow", "circle_cons"}
 
-ENDM = {"Nicely died.", "Succesfully failed.", "Perfection in the desynchronization."}
+ENDM = {"Nicely died.", "Successfully failed.", "Perfection in the desynchronization."}
+
+SQUADS = {"Fantasmagoria", "Lost in thoughts","Deader than ever"}
 
 TL = {
   {x=40, y=50},
@@ -63,7 +68,9 @@ TL = {
 SPR= {
   ["att"]=224,
   ["def"]=228,
-  ["heel"]= 225
+  ["heel"]= 225,
+  ["aa"]=235,
+  ["s"]=229
 }
 
 
@@ -104,7 +111,7 @@ anims = {}
 
 -- Debug 
 
-debug = false
+debug = true
 
 function show_debug()
   rect(5, 10, LENX-10, LENY-20, 0)
@@ -190,6 +197,7 @@ function Player(inx, i)
   m.a = true --alive
   m.th ='pl'
   m.i = i or 1
+  m.giveback = 0
   return m
 end
 
@@ -201,6 +209,8 @@ function MnstAtt(inx)
   m.type = da[3]
   m.val = da[4]
   m.stop = da[5] or false
+  m.brk = da[6] or false
+  m.plus = da[7] or {}
   return m
 end
 
@@ -211,6 +221,8 @@ function PlaySP(inx)
   m.desc = da[2]
   m.type = da[3]
   m.val = da[4]
+  m.brk = da[5] or false
+  m.plus = da[6] or {}
   m.stop=false
   return m
 end
@@ -234,6 +246,7 @@ function Monst(inx, i)
   m.a = true
   m.th = "monst"
   m.i = i or 1
+  m.giveback = 0
   return m
 end
 
@@ -317,16 +330,22 @@ function prepo()
         txt = "Press A to start"
         print(txt, mid(txt), 115, 0)
       end
+    else
+      txt = SQUADS[slct.playch//2+1]
+      local sz = print(txt, -100,-100, 0, false, 1, true)
+      print(txt, 45-sz//2, 116,0, false, 1, true)
+      rectb(45-sz//2,123,sz,1,0)
+      rectb(12,112,66,20,0)
     end
     if btnp(0) and (FREE_PLAY or slct.chosh>1) then 
       if FREE_PLAY then slct.chosh =(slct.chosh-2)%#BIB.PL+1
       else slct.chosh = slct.chosh-1
-        if slct.playch>slct.chosh then slct.playch=slct.playch-1 end
+        if slct.playch>slct.chosh then slct.playch=slct.playch-2 end
       end
     elseif btnp(1) and (FREE_PLAY or slct.chosh<#BIB.PL) then 
       if FREE_PLAY then slct.chosh = (slct.chosh)%#BIB.PL+1 
       else slct.chosh = slct.chosh+1
-        if slct.playch+2<slct.chosh then slct.playch=slct.playch+1 end
+        if slct.playch+2<slct.chosh then slct.playch=slct.playch+2 end
       end
     elseif btnp(6) and #slct.pl==3 then sm_st=2 tt=0
     elseif btnp(4) then 
@@ -372,6 +391,7 @@ function prepo()
   end
 end
 
+debug = false
 -- HUD
 
 function HUD_health()
@@ -453,8 +473,8 @@ function show_choices()
 end
 
 function rect_choices()
-  rect(10,98,LENX-20,LENY-108, 0)
-  rectb(10,98,LENX-20,LENY-108, 15)
+  rect(3,98,LENX-6,LENY-108, 0)
+  rectb(3,98,LENX-6,LENY-108, 15)
 end
 
 --Round
@@ -494,14 +514,36 @@ end
 
 function do_act(usr, act, tgt)
   if not usr.a then return end
-  if act.type == "att" then attack(tgt, act.val)
-  elseif act.type == "def" then usr.def = act.val 
+  if act.type == "att" and (act.name ~="Failed attack") then 
+    attack(usr, tgt, act)
+  elseif act.type == "def" then 
+    usr.def = act.val 
   elseif act.type == "heel" then
-    local v = usr.pv + act.val 
-    local val = v<=usr.maxpv and v or usr.maxpv
-    anims[#anims+1] = Anim(math.random(TL[usr.i].x-20, TL[usr.i].x+20), TL[usr.i].y+ (usr.th =="pl" and 65 or 0), "heel", 1, val-usr.pv)
-    usr.pv = val
+    heelme(usr, act)
+  elseif act.type == "aa" then
+    local slf = act.plus["aa"][1]
+    local oth = act.plus["aa"][2]
+    trace(act.brk)
+    attack(usr,usr,nil,slf,act.brk, true)
+    attack(usr,tgt,nil,oth,act.brk)
+  elseif act.type == "da" then
+    usr.giveback = act.val
+  elseif act.type == "s" then
+    if act.name == "Divine" then
+      for i=1,3 do
+        heelme(HER[i],nil,act.val)
+      end
+    end
   end
+end
+
+function heelme(usr, act, val)
+  local h
+  if act == nil then h = val else h = act.val end
+  local v = usr.pv + h 
+  local val = v<=usr.maxpv and v or usr.maxpv
+  anims[#anims+1] = Anim(math.random(TL[usr.i].x-20, TL[usr.i].x+20), TL[usr.i].y+ (usr.th =="pl" and 65 or 0), "heel", 1, val-usr.pv)
+  usr.pv = val
 end
 
 function monster_turn()
@@ -509,13 +551,15 @@ function monster_turn()
     local mnst = cmonst[im]
     local c_at = mnst.spels[mnst.c_att]
     if mnst.pv <= 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1 anims[#anims+1] = Anim(TL[mnst.i].x, TL[mnst.i].y, "die", 1, mnst, cols[mnst.i])
-    elseif c_at.type ~= "def" then
+    elseif c_at.type ~= "def" and c_at.type ~= "da" then
       mnst.st_att = mnst.st_att + 1
       if mnst.st_att >= c_at.preptim and HER[im].a then 
         do_act(mnst, c_at, HER[im]) 
         mnst.st_att = 0 
         mnst.c_att = rnd1(#mnst.spels-1) 
       end
+    elseif mnst.st_att == -1 then
+      mnst.c_att = rnd1(#mnst.spels-1) 
     end
   end
 end
@@ -525,12 +569,12 @@ function monster_def_turn()
     local mnst = cmonst[im]
     local c_at = mnst.spels[mnst.c_att]
     mnst.def = 0
-    if c_at.type == "def" then 
+    mnst.giveback = 0
+    if c_at.type == "def" or c_at.type == "da" then 
       mnst.st_att = mnst.st_att + 1
       if mnst.st_att >= c_at.preptim and HER[im].a then 
       do_act(mnst, c_at, HER[im]) 
-      mnst.st_att = 0
-      mnst.c_att = rnd1(#mnst.spels-1) 
+      mnst.st_att = -1
       end
     end
   end
@@ -540,17 +584,20 @@ function newmonst(monst, indx)
   cmonst[indx] = Monst(monst, indx)
 end
 
-function attack(tgt, v)
+function attack(source,tgt,att,val,brk,skipback)
+  local v,brk
+  if att == nil then v=val brk=brk else v = att.val brk = att.brk end
   if tgt.def < 100 then
     if v-tgt.def > 0 then
       tgt.pv = tgt.pv - v + tgt.def end
-    if tgt.spels[tgt.c_att].stop == true then stop_attack(tgt) end
+    if tgt.giveback ~=0 and skipback==nil then attack(tgt,source,nil,math.ceil(v*tgt.giveback),nil,true) end
+    if tgt.spels[tgt.c_att].stop == true and (brk ==true) then stop_attack(tgt) end
     if tgt.th ~= "ms" then
       anims[#anims+1]=Anim(math.random(TL[tgt.i].x-20, TL[tgt.i].x+20), TL[tgt.i].y+(tgt.th =="pl" and 65 or 0), "hit", inv, v)
       if v<=3 then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y +(tgt.th =="pl" and 65 or 0), "slice", rnd0(1)*2-1) 
       else 
         local inv = rnd0(1)*2-1
-        for j=0,5 do
+        for j=0,5 do  
           anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y+j+(tgt.th =="pl" and 65 or 0), "slice", inv)
         end
       end
