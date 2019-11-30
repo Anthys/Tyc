@@ -23,20 +23,22 @@ BIB = {
     --{"name", "description", "shape", "attacks list", "pv"}
   },
   MSTATT={
-    {"claw", 1, "att", 1},
+    {"claw", 1, "att",2},
     {"fireball", 2, "att", 5, true},
     {"sneaky jump", 1, "def", 100},
-    {"give back", 1, "da", 1}
+    {"give back", 1, "da", 1},
+    {"mirror",1,"da",2},
+    {"nightmare", 2, 'att', 5 }
     --{"name", "preptime int", "type", "value", "stopable bool false default", "can break"}
   },
   PL = {
-    {"michel", "warrior of the void", 6, {1,2,9}, 6},
-    {"steven", "strongest man alive", 7, {1,4,5}, 11},
-    {"elodie", "i don't really know her", 8, {2,3,6}, 8},
-    {"lucile", "also called kevin", 5, {4, 5, 6}, 7},
-    {"philip", "a handsome boi", 6, {1,4,6}, 9},
-    {"janine", "queen of everything", 6, {1,4,6}, 9},
-    {"nadine", "came back from hell", 6, {1,4,6}, 9}
+    {"michel", "Warrior of the void", 6, {3,8,10}, 8},
+    {"steven", "Strongest man alive", 7, {2,5,4}, 11},
+    {"elodie", "I don't really know her", 8, {9,4,11}, 8},
+    {"lucile", "Also called kevin", 5, {4, 5, 6}, 7},
+    {"philip", "A handsome boi", 6, {1,4,6}, 9},
+    {"janine", "Queen of everything", 6, {1,4,6}, 9},
+    {"nadine", "Came back from hell", 6, {1,4,6}, 9}
     --{"name", "desc", "col", "attacks", "hp"}
   },
   SP = {
@@ -48,7 +50,9 @@ BIB = {
     {"RedPo", "Red potion", "heel", 2},
     {"Shout", "Shouting very loud", "att", 0, true},
     {"SmokBomb", "Drop a smoky bomb", "aa", 0, true, {["aa"]={1,1}}},
-    {"Divine", "Heal everyone", "s", 2, false}
+    {"Divine", "Heal everyone", "s_1", 2, false},
+    {"Silence", "Break every attack", "s_2", 0, true},
+    {"Dagger", "Sneaky slice", "att", 1}
     --{name str, description str, type str (att, def, heel), value int, can break, opt}
   }
 } -- attacks type : att (attacks enemy in front), def (self defense), heel (self heel), aa (attack self and front), da (defense and give back), s (special)
@@ -70,11 +74,13 @@ SPR= {
   ["def"]=228,
   ["heel"]= 225,
   ["aa"]=235,
-  ["s"]=229
+  ["s_1"]=229,
+  ["s_2"]=234
 }
 
+DEATH_COND = 1 -- number of people to die to end the game
 
-MX_WAIT = 50
+MX_WAIT = 50 -- decrease to quicken animations
 
 FREE_PLAY = false
 
@@ -331,6 +337,7 @@ function prepo()
         print(txt, mid(txt), 115, 0)
       end
     else
+      print(pmem(0))
       txt = SQUADS[slct.playch//2+1]
       local sz = print(txt, -100,-100, 0, false, 1, true)
       print(txt, 45-sz//2, 116,0, false, 1, true)
@@ -420,7 +427,7 @@ end
 
 function selecti(nm)
   local chs = 3
-  rectb(15, 91 + nm*8, LENX-30, 10, 9)
+  rectb(4, 91 + nm*8, LENX-8, 10, 9)
   if not VIS.choxchox then
     rect(8, 2, LENX-16, 9, 12)
     local txt = "X to back, S to inspect, Z to select"
@@ -440,7 +447,7 @@ function selecti(nm)
     elseif btnp(5) then VIS.choxchox = false
     elseif btnp(4) then VIS.descp = true
     end
-    rectb(16+(slct.choxchox-1)*70, 91 + nm*8, 60, 10, 10)
+    rectb(TL[(slct.choxchox)].x-35, 91 + nm*8, 70, 10, 10)
   else
     rect(8, 2, LENX-16, 9, 12)
     local txt = "X to back"
@@ -528,10 +535,14 @@ function do_act(usr, act, tgt)
     attack(usr,tgt,nil,oth,act.brk)
   elseif act.type == "da" then
     usr.giveback = act.val
-  elseif act.type == "s" then
+  elseif string.sub(act.type,1,2) == "s_" then
     if act.name == "Divine" then
       for i=1,3 do
         heelme(HER[i],nil,act.val)
+      end
+    elseif act.name == "Silence" then
+      for i=1,3 do
+        attack(usr, cmonst[i], nil, 0, true, true)
       end
     end
   end
@@ -635,7 +646,7 @@ end
 
 function next_turn()
   if RND_ST[game.rnd_st]=="pl_anim" then
-    print(game.sub_st)
+    --print(game.sub_st)
     if game.sub_st == MX_WAIT then
       monster_def_turn()
       player_turn(slct.act)
@@ -660,6 +671,10 @@ function next_turn()
 end
 
 function endo()
+  if tt == 1 then 
+    pmem(0,scor.k)
+    pmem(1,scor.r)
+  end
   cls(0)
   if slct.endm == "" then slct.endm = ENDM[rnd1(#ENDM)] end
   local txt = slct.endm
@@ -678,8 +693,9 @@ function checkded()
       sum=sum+1
     end
   end
-  if sum==3 then
+  if sum>=DEATH_COND then
     game.s=game.s+1
+    tt = 0
   end
 end
 
