@@ -37,6 +37,7 @@ BIB = {
     {"philip", "a handsome boi", 6, {1,4,6}, 9},
     {"janine", "queen of everything", 6, {1,4,6}, 9},
     {"nadine", "came back from hell", 6, {1,4,6}, 9}
+    --{"name", "desc", "col", "attacks", "hp"}
   },
   SP = {
     {"Sword", "Sword attack", "att", 3},
@@ -68,6 +69,8 @@ SPR= {
 
 MX_WAIT = 50
 
+FREE_PLAY = false
+
 -- Variables
 
 t=0
@@ -87,7 +90,7 @@ prepsq = {}
 HER = {}
 monstpack={}
 
-slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}, endm=''}
+slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}, endm='',playch=1}
 
 VIS={chox=false, choxchox=false, descsp=false}
 
@@ -300,6 +303,7 @@ function prepo()
     rect(80, 40, 1, LENY//2,0)
     local sl = BIB.PL[slct.chosh]
     rectb(30-2, 30+slct.chosh*10-2, pxltxt(sl[1])+4, 9, 0)
+    if not FREE_PLAY then rectb(30-4, 30+slct.playch*10-2-1, 45, 3*10+1, 3) end
     txt = sl[2]
     print(txt,150-pxltxt(txt)//2, 100,0)
     txt = "Lifepoints : "..tostring(sl[5])
@@ -308,18 +312,35 @@ function prepo()
     for i,v in pairs(sl[4]) do 
       print(BIB.SP[v][1],110,60-9+9*i, 0)
     end
-    if #slct.pl==3 and tt%50<25 then
-      txt = "Press A to start"
-      print(txt, mid(txt), 115, 0)
+    if FREE_PLAY then
+      if #slct.pl==3 and tt%50<25 then
+        txt = "Press A to start"
+        print(txt, mid(txt), 115, 0)
+      end
     end
-    if btnp(0) then slct.chosh = (slct.chosh-2)%#BIB.PL+1
-    elseif btnp(1) then slct.chosh = (slct.chosh)%#BIB.PL+1 
+    if btnp(0) and (FREE_PLAY or slct.chosh>1) then 
+      if FREE_PLAY then slct.chosh =(slct.chosh-2)%#BIB.PL+1
+      else slct.chosh = slct.chosh-1
+        if slct.playch>slct.chosh then slct.playch=slct.playch-1 end
+      end
+    elseif btnp(1) and (FREE_PLAY or slct.chosh<#BIB.PL) then 
+      if FREE_PLAY then slct.chosh = (slct.chosh)%#BIB.PL+1 
+      else slct.chosh = slct.chosh+1
+        if slct.playch+2<slct.chosh then slct.playch=slct.playch+1 end
+      end
     elseif btnp(6) and #slct.pl==3 then sm_st=2 tt=0
-    elseif btnp(4) then
-      local i = slct.chosh
-      local ys = has(slct.pl, i)
-      if ys~=0 then table.remove(slct.pl, ys) 
-      elseif #slct.pl<3 then slct.pl[#slct.pl+1]=i end
+    elseif btnp(4) then 
+      if FREE_PLAY then 
+        local i = slct.chosh
+        local ys = has(slct.pl, i)
+        if ys~=0 then table.remove(slct.pl, ys) 
+        elseif #slct.pl<3 then slct.pl[#slct.pl+1]=i end
+      else
+      for i=0,2 do
+        slct.pl[#slct.pl+1]=i+slct.playch
+      end
+      sm_st=2 tt=0
+      end
     end
   elseif sm_st==2 then
     --should chose the world here
