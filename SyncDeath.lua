@@ -1,34 +1,18 @@
+--SyncDeath
+
 -- next: Fix the dying animation, problem should be caused by interactions with other animations.
 -- Make squads instead of people
 -- Add the counter attack type, where the monster give back 50% of the attack
 -- Leadboards
 
+--palette: 0black 15white 1text 2-3mnst 5-6-7-8player 9-10selec 11-12background 13breakattack
 
+-- Constants
 LENX = 240
 LENY = 136
-
-game = {
-  s=1
-}
-
---palette: 0black 15white 1text 2-3mnst 5-6-7-8player 9-10selec 11-12background 
-t=0
-tt=0
-
-circle = {
-  ok = false
-}
-
-cols = {5, 6, 7}
-
-spd = 7
---"intro", "initio", 
+cols = {5, 6, 7} -- Colors for each dimension
 ST = {"prepo","duo", "endo"}
-
-
-function rnd1(n)
-  return math.random(n)
-end
+RND_ST = {"pl","pl_anim","mnst_anim"}
 
 BIB = {
   MONST={
@@ -65,16 +49,215 @@ BIB = {
   }
 }
 
+SHP = {"circle_grow", "circle_cons"}
+
+ENDM = {"Nicely died.", "Succesfully failed.", "Perfection in the desynchronization."}
+
+TL = {
+  {x=40, y=50},
+  {x=120,y=50},
+  {x=200,y=50}
+}
+
+SPR= {
+  ["att"]=224,
+  ["def"]=228,
+  ["heel"]= 225
+}
+
+
+MX_WAIT = 50
+
+-- Variables
+
+t=0
+tt=0
+
+spd = 7
+
+game = {
+  s=1,
+  rnd_st = 1,
+  sub_st = -1
+}
+
+sm_st = 0
+prepsq = {}
+
+HER = {}
+monstpack={}
+
+slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}, endm=''}
+
+VIS={chox=false, choxchox=false, descsp=false}
+
+scor = {
+  k=0,
+  r=0
+}
+
+cmonst = {}
+anims = {}
+
+-- Debug 
 
 debug = false
 
-HER = {}
+function show_debug()
+  rect(5, 10, LENX-10, LENY-20, 0)
+  for i=1,3 do
+    local her = HER[i]
+    print(trace_table({her.name, her.pv, her.c_att, her.def}), 7, 20*i, 1, false, 1, true)
+    local m = cmonst[i]
+    print(trace_table({m.name, m.pv, m.c_att, m.st_att, m.def}), 12, 20*i + 10)
+  end
+  for i,v in pairs(anims) do
+    print(trace_table(v), 7, 20*3+10+10*i)
+  end
+end
 
-sm_st = 0
+-- Utilities
 
---game.s = 4
-monstpack={}
-prepsq = {}
+function rnd0(n)
+  return math.random(0,n)
+end
+
+function rnd1(n)
+  return math.random(n)
+end
+
+function s2t(s)
+  local tb = {}
+  s:gsub(".",function(c) table.insert(tb,c) end)
+  return tb
+end
+
+function has(t, v)
+  for i,h in pairs(t) do
+    if h==v then return i end
+  end
+  return 0
+end
+
+function trace_table(tbl)
+  local res = ""
+  if type(tbl) ~= "table" then return tostring(tbl) end
+  for i,v in pairs(tbl) do 
+    res = res .. "," .. trace_table(v)
+  end
+  return res
+end
+
+function mid(txt)
+  return LENX//2 - pxltxt(txt)//2
+end
+
+function table.clone(org)
+  return {table.unpack(org)}
+end
+
+function pxltxt(txt)
+  return print(txt, -100, -100, 0)
+end
+
+function shuffle(tbl)
+  for i = #tbl, 2, -1 do
+    local j = rnd1(i)
+    tbl[i], tbl[j] = tbl[j], tbl[i]
+  end
+  return tbl
+end
+
+--Class 
+
+function Player(inx, i)
+  local dp = table.clone(BIB.PL[inx])
+  local m = {}
+  m.name = dp[1]
+  m.desc = dp[2]
+  m.col = dp[3]
+  m.spels = table.clone(dp[4])
+  for i,v in pairs(m.spels) do
+    m.spels[i] = PlaySP(v)
+  end
+  m.pv = dp[5]
+  m.maxpv = dp[5]
+  m.c_att = 1
+  m.def = 0
+  m.a = true --alive
+  m.th ='pl'
+  m.i = i or 1
+  return m
+end
+
+function MnstAtt(inx)
+  local da = table.clone(BIB.MSTATT[inx])
+  local m = {}
+  m.name = da[1]
+  m.preptim = da[2]
+  m.type = da[3]
+  m.val = da[4]
+  m.stop = da[5] or false
+  return m
+end
+
+function PlaySP(inx)
+  local da = table.clone(BIB.SP[inx])
+  local m = {}
+  m.name = da[1]
+  m.desc = da[2]
+  m.type = da[3]
+  m.val = da[4]
+  m.stop=false
+  return m
+end
+
+function Monst(inx, i)
+  local dm = table.clone(BIB.MONST[inx])
+  local m = {}
+  m.name = dm[1]
+  m.desc = dm[2]
+  m.shape = dm[3]
+  m.spels = table.clone(dm[4])
+  for i,v in pairs(m.spels) do
+    m.spels[i] = MnstAtt(v)
+  end
+  m.spels[#m.spels+1]={name="Failed attack",val=0,type="att",preptim=1}
+  m.pv = dm[5]
+  m.maxpv=dm[5]
+  m.c_att = rnd1(#m.spels-1)
+  m.st_att = 0
+  m.def = 0
+  m.a = true
+  m.th = "monst"
+  m.i = i or 1
+  return m
+end
+
+function Anim(x,y,t, inv, val, val2)
+  m={}
+  m.x=x
+  m.y=y
+  m.t=0
+  m.type = t
+  m.inv = inv or 1
+  m.val = val or 0
+  m.val2 = val2 or 0
+  return m
+end
+
+-- Game
+
+function TIC()
+  _G[ST[game.s]]()
+  t=t+1
+  tt=tt+1
+  if keyp(14) then game.s = (game.s)%#ST + 1 end
+  -- DEBUG
+  if key(49) then show_debug() end
+end
+
+-- SquadChoice
 
 function prepo()
   cls(0)
@@ -168,6 +351,272 @@ function prepo()
   end
 end
 
+-- HUD
+
+function HUD_health()
+  for i=1,3 do
+    local p = HER[i]
+    local m = cmonst[i]
+    local txt = m.pv
+    print(txt, TL[i].x +15, TL[i].y+17)
+    txt = "PV : " .. tostring(p.pv)
+    print(txt, TL[i].x-15, TL[i].y+78)
+  end
+end
+
+function show_descsp(a,b)
+  rect(LENX//2-50, 40, 100, 40, 11)
+  rectb(LENX//2-50, 40, 100, 40, 0)
+  local v = HER[b].spels[a]
+  local txt = v.name
+  print(txt, LENX//2-pxltxt(txt)//2, 45)
+  rect(LENX//2-pxltxt(txt)//2, 51, pxltxt(txt), 1, 0)
+  txt = "Type : " .. v.type
+  print(txt, LENX//2-pxltxt(txt)//2, 54+5)
+  txt = "Value : "..v.val
+  print(txt, LENX//2-pxltxt(txt)//2, 63+5)
+end
+
+function selecti(nm)
+  local chs = 3
+  rectb(15, 91 + nm*8, LENX-30, 10, 9)
+  if not VIS.choxchox then
+    rect(8, 2, LENX-16, 9, 12)
+    local txt = "X to back, S to inspect, Z to select"
+    print(txt, LENX//2 - pxltxt(txt)//2, 4)
+    if btnp(0) then slct.chox = (slct.chox-2)%chs+1
+    elseif btnp(1) then slct.chox = (slct.chox)%chs+1
+    elseif btnp(7) then VIS.choxchox = true
+    elseif btnp(4) then slct.act= slct.chox end
+  elseif not VIS.descp then
+    rect(8, 2, LENX-16, 9, 12)
+    local txt = "X to back, Z to inspect"
+    print(txt, LENX//2-pxltxt(txt)//2, 4)
+    if btnp(0) then slct.chox = (slct.chox-2)%chs+1
+    elseif btnp(1) then slct.chox = (slct.chox)%chs+1 end
+    if btnp(2) then slct.choxchox = (slct.choxchox-2)%3+1
+    elseif btnp(3) then slct.choxchox = (slct.choxchox)%3+1
+    elseif btnp(5) then VIS.choxchox = false
+    elseif btnp(4) then VIS.descp = true
+    end
+    rectb(16+(slct.choxchox-1)*70, 91 + nm*8, 60, 10, 10)
+  else
+    rect(8, 2, LENX-16, 9, 12)
+    local txt = "X to back"
+    print(txt, LENX//2-pxltxt(txt)//2, 4)
+    show_descsp(slct.chox, slct.choxchox) 
+    if btnp(5) then VIS.descp = false end 
+  end
+end
+
+function backdim()
+  rect(0,0,LENX//3,LENY,cols[1])
+  rect(LENX//3,0,LENX//3,LENY,cols[2])
+  rect(2*(LENX//3),0,LENX//3,LENY,cols[3])
+  rect(LENX//3-1,0,3,LENY,0)
+  rect(2*(LENX//3)-1,0,3,LENY,0)
+end
+
+function show_choices()
+  rect_choices()
+  for d=1,3 do
+    local cd = HER[d]
+    for m,v in pairs(cd.spels) do 
+      local tx = TL[d].x-pxltxt(v.name)//2
+      local ty = TL[d].y+51+m*8-8
+      print(v.name,tx,ty,cd.a and 15 or 10,false,1, false)
+      local sprt = SPR[v.type]
+      spr(sprt, tx-10, ty-1, 0)
+    end
+  end
+end
+
+function rect_choices()
+  rect(10,98,LENX-20,LENY-108, 0)
+  rectb(10,98,LENX-20,LENY-108, 15)
+end
+
+--Round
+
+function duo()
+  cls(0)
+  backdim()
+  show_monst()
+  HUD_health()
+  do_anims()
+  if btnp(6) and not VIS.chox then VIS.chox = true 
+  elseif (btnp(5) or btnp(6)) and not VIS.choxchox then VIS.chox = false end
+  if slct.act ~= 0 then
+    if game.sub_st == -1 then
+      game.sub_st=MX_WAIT
+      VIS.chox=false
+      game.rnd_st=2
+    end
+    if next_turn() == true then
+      slct.act = 0
+    end
+  elseif VIS.chox then
+    show_choices()
+    selecti(slct.chox)
+  end
+  discoball()
+end
+
+function player_turn(inx) 
+  for i=1,3 do
+    if HER[i].a then
+      HER[i].def = 0 
+      do_act(HER[i], HER[i].spels[inx], cmonst[i]) 
+    end
+  end
+end
+
+function do_act(usr, act, tgt)
+  if not usr.a then return end
+  if act.type == "att" then attack(tgt, act.val)
+  elseif act.type == "def" then usr.def = act.val 
+  elseif act.type == "heel" then
+    local v = usr.pv + act.val 
+    local val = v<=usr.maxpv and v or usr.maxpv
+    anims[#anims+1] = Anim(math.random(TL[usr.i].x-20, TL[usr.i].x+20), TL[usr.i].y+ (usr.th =="pl" and 65 or 0), "heel", 1, val-usr.pv)
+    usr.pv = val
+  end
+end
+
+function monster_turn()
+  for im=1,3 do
+    local mnst = cmonst[im]
+    local c_at = mnst.spels[mnst.c_att]
+    if mnst.pv <= 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1 anims[#anims+1] = Anim(TL[mnst.i].x, TL[mnst.i].y, "die", 1, mnst, cols[mnst.i])
+    elseif c_at.type ~= "def" then
+      mnst.st_att = mnst.st_att + 1
+      if mnst.st_att >= c_at.preptim and HER[im].a then 
+        do_act(mnst, c_at, HER[im]) 
+        mnst.st_att = 0 
+        mnst.c_att = rnd1(#mnst.spels-1) 
+      end
+    end
+  end
+end
+
+function monster_def_turn()
+  for im=1,3 do
+    local mnst = cmonst[im]
+    local c_at = mnst.spels[mnst.c_att]
+    mnst.def = 0
+    if c_at.type == "def" then 
+      mnst.st_att = mnst.st_att + 1
+      if mnst.st_att >= c_at.preptim and HER[im].a then 
+      do_act(mnst, c_at, HER[im]) 
+      mnst.st_att = 0
+      mnst.c_att = rnd1(#mnst.spels-1) 
+      end
+    end
+  end
+end
+
+function newmonst(monst, indx)
+  cmonst[indx] = Monst(monst, indx)
+end
+
+function attack(tgt, v)
+  if tgt.def < 100 then
+    if v-tgt.def > 0 then
+      tgt.pv = tgt.pv - v + tgt.def end
+    if tgt.spels[tgt.c_att].stop == true then stop_attack(tgt) end
+    if tgt.th ~= "ms" then
+      anims[#anims+1]=Anim(math.random(TL[tgt.i].x-20, TL[tgt.i].x+20), TL[tgt.i].y+(tgt.th =="pl" and 65 or 0), "hit", inv, v)
+      if v<=3 then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y +(tgt.th =="pl" and 65 or 0), "slice", rnd0(1)*2-1) 
+      else 
+        local inv = rnd0(1)*2-1
+        for j=0,5 do
+          anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y+j+(tgt.th =="pl" and 65 or 0), "slice", inv)
+        end
+      end
+    end
+  end
+end
+
+
+function stop_attack(mnst)
+  mnst.st_att = 0
+  mnst.c_att=#mnst.spels
+  anims[#anims+1]=Anim(math.random(TL[mnst.i].x-20, TL[mnst.i].x+20), TL[mnst.i].y+(mnst.th =="pl" and 65 or 20), "break", 1)
+end
+
+function discoball()
+  for i=1,3 do
+    if not HER[i].a then
+      whitenoise((i-1)*LENX//3,0,2)
+      print("Disconnected", TL[i].x-pxltxt("Disconnected")//2, TL[i].y+60) 
+    end
+  end
+end
+
+function whitenoise(x,y,n)
+  local n = n or 1
+  for h=1,n do
+    for i=1,10 do
+      for j=1,18 do
+        local sprt = 16*math.random(4,7) + math.random(0,1)
+        spr(sprt, -8 +i*8 +x,-8+ j*8+y, 0)
+      end
+    end
+  end
+end
+
+function next_turn()
+  if RND_ST[game.rnd_st]=="pl_anim" then
+    print(game.sub_st)
+    if game.sub_st == MX_WAIT then
+      monster_def_turn()
+      player_turn(slct.act)
+    elseif game.sub_st == 0 then
+      game.sub_st = MX_WAIT
+      game.rnd_st =game.rnd_st+1
+      return
+    end
+    game.sub_st=game.sub_st-1
+  elseif RND_ST[game.rnd_st]=="mnst_anim" then
+    if game.sub_st == MX_WAIT then
+      monster_turn()
+      checkded()
+    elseif game.sub_st == 0 then
+      game.rnd_st = 1
+      game.sub_st = -1
+      scor.r=scor.r+1
+      return true
+    end
+    game.sub_st=game.sub_st-1
+  end
+end
+
+function endo()
+  cls(0)
+  if slct.endm == "" then slct.endm = ENDM[rnd1(#ENDM)] end
+  local txt = slct.endm
+  print(txt, mid(txt), 40)
+  txt = "Kills: "..tostring(scor.k)
+  print(txt, 40, 60)
+  txt = "Rounds: "..tostring(scor.r)
+  print(txt, 40, 70)
+end
+
+function checkded()
+  local sum = 0
+  for i=1,3 do
+    if HER[i].pv<=0 then
+      HER[i].a=false
+      sum=sum+1
+    end
+  end
+  if sum==3 then
+    game.s=game.s+1
+  end
+end
+
+--AnimsName
+
 function name1(txt, x, y, tt)
   if tt>=200 then
     for i,v in pairs(s2t(string.upper(txt))) do
@@ -212,347 +661,7 @@ function name3(txt, x, y, tm)
   end
 end
 
-function s2t(s)
-  local tb = {}
-  s:gsub(".",function(c) table.insert(tb,c) end)
-  return tb
-end
-
-function has(t, v)
-  for i,h in pairs(t) do
-    if h==v then return i end
-  end
-  return 0
-end
-
-slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}, endm=''}
-VIS={chox=false, choxchox=false, descsp=false}
-
-SHP = {"circle_grow", "circle_cons"}
-function mid(txt)
-  return LENX//2 - pxltxt(txt)//2
-end
-
-function trace_table(tbl)
-  local res = ""
-  if type(tbl) ~= "table" then return tostring(tbl) end
-  for i,v in pairs(tbl) do 
-    res = res .. "," .. trace_table(v)
-  end
-  return res
-end
-
-function checkded()
-  local sum = 0
-  for i=1,3 do
-    if HER[i].pv<=0 then
-      HER[i].a=false
-      sum=sum+1
-    end
-  end
-  if sum==3 then
-    game.s=game.s+1
-  end
-end
-
-function initio()
-  init_pm()
-  game.s=game.s+1
-end
-
-endm = {"Nicely died.", "Succesfully failed.", "Perfection in the desynchronization."}
-scor = {
-  k=0,
-  r=0
-}
-
-function endo()
-  cls(0)
-  if slct.endm == "" then slct.endm = endm[rnd1(#endm)] end
-  local txt = slct.endm
-  print(txt, mid(txt), 40)
-  txt = "Kills: "..tostring(scor.k)
-  print(txt, 40, 60)
-  txt = "Rounds: "..tostring(scor.r)
-  print(txt, 40, 70)
-end
-
-function TIC()
-  _G[ST[game.s]]()
-  t=t+1
-  tt=tt+1
-  if keyp(14) then game.s = (game.s)%#ST + 1 end
-  -- DEBUG
-  if key(49) then show_debug() end
-end
-
-function show_debug()
-  rect(5, 10, LENX-10, LENY-20, 0)
-  for i=1,3 do
-    local her = HER[i]
-    print(trace_table({her.name, her.pv, her.c_att, her.def}), 7, 20*i, 1, false, 1, true)
-    local m = cmonst[i]
-    print(trace_table({m.name, m.pv, m.c_att, m.st_att, m.def}), 12, 20*i + 10)
-  end
-  for i,v in pairs(anims) do
-    print(trace_table(v), 7, 20*3+10+10*i)
-  end
-end
-
---UTILITIES
-function table.clone(org)
-  return {table.unpack(org)}
-end
-
-function intro()
-  cls(0)
-  circle_grow(160, 40, 30, true)
-  circle_grow(200, 100, 30, false)
-  --circle_cons(60, 60, 30, 4)
-  circle_grow_cons(60, 60, 30)
-  --circle_cons(160, 60, 30, 2, true)
-end
-
-function rect_choices()
-  rect(10,98,LENX-20,LENY-108, 0)
-  rectb(10,98,LENX-20,LENY-108, 15)
-end
-
-TL = {
-  {x=40, y=50},
-  {x=120,y=50},
-  {x=200,y=50}
-}
-
-cmonst = {}
-
-SPR= {
-  ["att"]=224,
-  ["def"]=228,
-  ["heel"]= 225
-}
-
-function show_choices()
-  rect_choices()
-  for d=1,3 do
-    local cd = HER[d]
-    for m,v in pairs(cd.spels) do 
-      local tx = TL[d].x-pxltxt(v.name)//2
-      local ty = TL[d].y+51+m*8-8
-      print(v.name,tx,ty,cd.a and 15 or 10,false,1, false)
-      local sprt = SPR[v.type]
-      spr(sprt, tx-10, ty-1, 0)
-    end
-  end
-end
-
-
-function newmonst(monst, indx)
-  cmonst[indx] = Monst(monst, indx)
-end
-
-function backdim()
-  rect(0,0,LENX//3,LENY,cols[1])
-  rect(LENX//3,0,LENX//3,LENY,cols[2])
-  rect(2*(LENX//3),0,LENX//3,LENY,cols[3])
-  rect(LENX//3-1,0,3,LENY,0)
-  rect(2*(LENX//3)-1,0,3,LENY,0)
-end
-
-function selecti(nm)
-  local chs = 3
-  rectb(15, 91 + nm*8, LENX-30, 10, 9)
-  if not VIS.choxchox then
-    rect(8, 2, LENX-16, 9, 12)
-    local txt = "X to back, S to inspect, Z to select"
-    print(txt, LENX//2 - pxltxt(txt)//2, 4)
-    if btnp(0) then slct.chox = (slct.chox-2)%chs+1
-    elseif btnp(1) then slct.chox = (slct.chox)%chs+1
-    elseif btnp(7) then VIS.choxchox = true
-    elseif btnp(4) then slct.act= slct.chox end
-  elseif not VIS.descp then
-    rect(8, 2, LENX-16, 9, 12)
-    local txt = "X to back, Z to inspect"
-    print(txt, LENX//2-pxltxt(txt)//2, 4)
-    if btnp(0) then slct.chox = (slct.chox-2)%chs+1
-    elseif btnp(1) then slct.chox = (slct.chox)%chs+1 end
-    if btnp(2) then slct.choxchox = (slct.choxchox-2)%3+1
-    elseif btnp(3) then slct.choxchox = (slct.choxchox)%3+1
-    elseif btnp(5) then VIS.choxchox = false
-    elseif btnp(4) then VIS.descp = true
-    end
-    rectb(16+(slct.choxchox-1)*70, 91 + nm*8, 60, 10, 10)
-  else
-    rect(8, 2, LENX-16, 9, 12)
-    local txt = "X to back"
-    print(txt, LENX//2-pxltxt(txt)//2, 4)
-    show_descsp(slct.chox, slct.choxchox) 
-    if btnp(5) then VIS.descp = false end 
-  end
-end
-
-function show_descsp(a,b)
-  rect(LENX//2-50, 40, 100, 40, 11)
-  rectb(LENX//2-50, 40, 100, 40, 0)
-  local v = HER[b].spels[a]
-  local txt = v.name
-  print(txt, LENX//2-pxltxt(txt)//2, 45)
-  rect(LENX//2-pxltxt(txt)//2, 51, pxltxt(txt), 1, 0)
-  txt = "Type : " .. v.type
-  print(txt, LENX//2-pxltxt(txt)//2, 54+5)
-  txt = "Value : "..v.val
-  print(txt, LENX//2-pxltxt(txt)//2, 63+5)
-end
-
-function pxltxt(txt)
-  return print(txt, -100, -100, 0)
-end
-
-function show_monst()
-  for i,v in pairs(cmonst) do
-    print(v.name, TL[i].x-pxltxt(v.name)//2, TL[i].y-30, 1)
-    local x = TL[i].x
-    local y = TL[i].y
-    rep_monst(v,x,y)
-    local at = v.spels[v.c_att]
-    local txt = "Preparing"
-    print(txt, TL[i].x-pxltxt(txt)//2, TL[i].y+30, 1)
-    print(at.name, TL[i].x-pxltxt(at.name)//2,TL[i].y+40, 1)
-    if at.preptim>=2 then local txt = tostring(v.st_att+1).."/"..tostring(at.preptim) print(txt, TL[i].x-pxltxt(txt)//2,TL[i].y+50,1) end
-  end
-end
-
-function rep_monst(m, x, y)
-  if m.shape <= 2 then circle_grow(x, y, 20, m.shape==2 and true or false)
-  elseif m.shape <= 4 then circle_cons(x,y,10,2, m.shape==4 and true or false) end
-end
-
-function Player(inx, i)
-  local dp = table.clone(BIB.PL[inx])
-  local m = {}
-  m.name = dp[1]
-  m.desc = dp[2]
-  m.col = dp[3]
-  m.spels = table.clone(dp[4])
-  for i,v in pairs(m.spels) do
-    m.spels[i] = PlaySP(v)
-  end
-  m.pv = dp[5]
-  m.maxpv = dp[5]
-  m.c_att = 1
-  m.def = 0
-  m.a = true --alive
-  m.th ='pl'
-  m.i = i or 1
-  return m
-end
-
-
-function MnstAtt(inx)
-  local da = table.clone(BIB.MSTATT[inx])
-  local m = {}
-  m.name = da[1]
-  m.preptim = da[2]
-  m.type = da[3]
-  m.val = da[4]
-  m.stop = da[5] or false
-  return m
-end
-
-function PlaySP(inx)
-  local da = table.clone(BIB.SP[inx])
-  local m = {}
-  m.name = da[1]
-  m.desc = da[2]
-  m.type = da[3]
-  m.val = da[4]
-  m.stop=false
-  return m
-end
-
-function Monst(inx, i)
-  local dm = table.clone(BIB.MONST[inx])
-  local m = {}
-  m.name = dm[1]
-  m.desc = dm[2]
-  m.shape = dm[3]
-  m.spels = table.clone(dm[4])
-  for i,v in pairs(m.spels) do
-    m.spels[i] = MnstAtt(v)
-  end
-  m.spels[#m.spels+1]={name="Failed attack",val=0,type="att",preptim=1}
-  m.pv = dm[5]
-  m.maxpv=dm[5]
-  m.c_att = rnd1(#m.spels-1)
-  m.st_att = 0
-  m.def = 0
-  m.a = true
-  m.th = "monst"
-  m.i = i or 1
-  return m
-end
-
-function init_pm()
-  for i=1,3 do
-    HER[#HER+1] = Player(i)
-    cmonst[#cmonst+1] = Monst(rnd1(4))
-  end
-end
-
-
-function do_act(usr, act, tgt)
-  if not usr.a then return end
-  if act.type == "att" then attack(tgt, act.val)
-  elseif act.type == "def" then usr.def = act.val 
-  elseif act.type == "heel" then
-    local v = usr.pv + act.val 
-    local val = v<=usr.maxpv and v or usr.maxpv
-    anims[#anims+1] = Anim(math.random(TL[usr.i].x-20, TL[usr.i].x+20), TL[usr.i].y+ (usr.th =="pl" and 65 or 0), "heel", 1, val-usr.pv)
-    usr.pv = val
-  end
-end
-
-function monster_def_turn()
-  for im=1,3 do
-    local mnst = cmonst[im]
-    local c_at = mnst.spels[mnst.c_att]
-    mnst.def = 0
-    if c_at.type == "def" then 
-      mnst.st_att = mnst.st_att + 1
-      if mnst.st_att >= c_at.preptim and HER[im].a then 
-      do_act(mnst, c_at, HER[im]) 
-      mnst.st_att = 0
-      mnst.c_att = rnd1(#mnst.spels-1) 
-      end
-    end
-  end
-end
-
-function next_turn()
-  monster_def_turn()
-  player_turn(slct.act)
-  monster_turn()
-  checkded()
-  scor.r=scor.r+1
-end
-
-function attack(tgt, v)
-  if tgt.def < 100 then
-    if v-tgt.def > 0 then
-      tgt.pv = tgt.pv - v + tgt.def end
-    if tgt.spels[tgt.c_att].stop == true then stop_attack(tgt) end
-    if tgt.th ~= "ms" then
-      anims[#anims+1]=Anim(math.random(TL[tgt.i].x-20, TL[tgt.i].x+20), TL[tgt.i].y+(tgt.th =="pl" and 65 or 0), "hit", inv, v)
-      if v<=3 then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y +(tgt.th =="pl" and 65 or 0), "slice", rnd0(1)*2-1) 
-      else 
-        local inv = rnd0(1)*2-1
-        for j=0,5 do
-          anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y+j+(tgt.th =="pl" and 65 or 0), "slice", inv)
-        end
-      end
-    end
-  end
-end
+--Anims
 
 function do_anims()
   for i,v in pairs(anims) do
@@ -569,37 +678,6 @@ function do_anims()
       if anim_die(v.t,v.x,v.y,v.val,v.val2) then table.remove(anims,i)end
     end
   end
-end
-
-function Anim(x,y,t, inv, val, val2)
-  m={}
-  m.x=x
-  m.y=y
-  m.t=0
-  m.type = t
-  m.inv = inv or 1
-  m.val = val or 0
-  m.val2 = val2 or 0
-  return m
-end
-
-function anim_heal(tm, x, y, val, inv)
-  local inv = inv or 1
-  local x=x
-  local y = y
-  local fin = 20
-  if tm>20 then return true end
-  local tmm =  tm>=9 and 18-tm or tm
-  spr(256 + 2*(tmm//3),x-9,y-4,0, 1, 0, 0,2, 2)
-  if tm>6 and tm<16 then local txt = "+"..tostring(val) print(txt, x-pxltxt(txt)//2, y, 15, false, 1, true) end
-end
-
-function shuffle(tbl)
-  for i = #tbl, 2, -1 do
-    local j = rnd1(i)
-    tbl[i], tbl[j] = tbl[j], tbl[i]
-  end
-  return tbl
 end
 
 tab1 = {}
@@ -636,8 +714,16 @@ function anim_die(tm,x,y,m,c)
   end
 end
 
-
-
+function anim_heal(tm, x, y, val, inv)
+  local inv = inv or 1
+  local x=x
+  local y = y
+  local fin = 20
+  if tm>20 then return true end
+  local tmm =  tm>=9 and 18-tm or tm
+  spr(256 + 2*(tmm//3),x-9,y-4,0, 1, 0, 0,2, 2)
+  if tm>6 and tm<16 then local txt = "+"..tostring(val) print(txt, x-pxltxt(txt)//2, y, 15, false, 1, true) end
+end
 
 function anim_break(tm, x, y, val, inv)
   local inv = inv or 1
@@ -663,8 +749,6 @@ function slice(t, x, y, inv)
   if t>fin+pn then return true end
 end
 
-anims = {}
-
 function anim_hit(tm, x, y, val, inv)
   local inv = inv or 1
   local x = x
@@ -681,94 +765,26 @@ function anim_hit(tm, x, y, val, inv)
   if tm>30 then return true end
 end
 
-function player_turn(inx) 
-  for i=1,3 do
-    if HER[i].a then
-      HER[i].def = 0 
-      do_act(HER[i], HER[i].spels[inx], cmonst[i]) 
-    end
-  end
-end
-
-function monster_turn()
-  for im=1,3 do
-    local mnst = cmonst[im]
-    local c_at = mnst.spels[mnst.c_att]
-    if mnst.pv <= 0 then newmonst(monstpack[rnd1(#monstpack)], im) scor.k=scor.k+1 anims[#anims+1] = Anim(TL[mnst.i].x, TL[mnst.i].y, "die", 1, mnst, cols[mnst.i])
-    elseif c_at.type ~= "def" then
-      mnst.st_att = mnst.st_att + 1
-      if mnst.st_att >= c_at.preptim and HER[im].a then 
-        do_act(mnst, c_at, HER[im]) 
-        mnst.st_att = 0 
-        mnst.c_att = rnd1(#mnst.spels-1) 
-      end
-    end
-  end
-end
-
-function stop_attack(mnst)
-  mnst.st_att = 0
-  mnst.c_att=#mnst.spels
-  anims[#anims+1]=Anim(math.random(TL[mnst.i].x-20, TL[mnst.i].x+20), TL[mnst.i].y+(mnst.th =="pl" and 65 or 20), "break", 1)
-end
-
-
-function rnd0(n)
-  return math.random(0,n)
-end
-
-function HUD_health()
-  for i=1,3 do
-    local p = HER[i]
-    local m = cmonst[i]
-    local txt = m.pv
-    print(txt, TL[i].x +15, TL[i].y+17)
-    txt = "PV : " .. tostring(p.pv)
-    print(txt, TL[i].x-15, TL[i].y+78)
-  end
-end
-
-function whitenoise(x,y,n)
-  local n = n or 1
-  for h=1,n do
-    for i=1,10 do
-      for j=1,18 do
-        local sprt = 16*math.random(4,7) + math.random(0,1)
-        spr(sprt, -8 +i*8 +x,-8+ j*8+y, 0)
-      end
-    end
-  end
-end
-
-function duo()
-  cls(0)
-  backdim()
-  show_monst()
-  HUD_health()
-  do_anims()
-  if btnp(6) and not VIS.chox then VIS.chox = true 
-  elseif (btnp(5) or btnp(6)) and not VIS.choxchox then VIS.chox = false end
-  if slct.act ~= 0 then
-    next_turn()
-    slct.act = 0
-    VIS.chox=false
-  elseif VIS.chox then
-    show_choices()
-    selecti(slct.chox)
-  end
-  discoball()
-end
-
-function discoball()
-  for i=1,3 do
-    if not HER[i].a then
-      whitenoise((i-1)*LENX//3,0,2)
-      print("Disconnected", TL[i].x-pxltxt("Disconnected")//2, TL[i].y+60) 
-    end
-  end
-end
-
 --VISU
+
+function show_monst()
+  for i,v in pairs(cmonst) do
+    print(v.name, TL[i].x-pxltxt(v.name)//2, TL[i].y-30, 1)
+    local x = TL[i].x
+    local y = TL[i].y
+    rep_monst(v,x,y)
+    local at = v.spels[v.c_att]
+    local txt = "Preparing"
+    print(txt, TL[i].x-pxltxt(txt)//2, TL[i].y+30, 1)
+    print(at.name, TL[i].x-pxltxt(at.name)//2,TL[i].y+40, at.stop and 13 or 1)
+    if at.preptim>=2 then local txt = tostring(v.st_att+1).."/"..tostring(at.preptim) print(txt, TL[i].x-pxltxt(txt)//2,TL[i].y+50,1) end
+  end
+end
+
+function rep_monst(m, x, y)
+  if m.shape <= 2 then circle_grow(x, y, 20, m.shape==2 and true or false)
+  elseif m.shape <= 4 then circle_cons(x,y,10,2, m.shape==4 and true or false) end
+end
 
 function circle_cons(x, y, r, n, inv)
   local n = n or 2
@@ -803,11 +819,13 @@ function circle_grow(x, y, r, inv)
   circ(x,y,r,colors[1])
   if inv then circ(x,y,tim,colors[2]) else circ(x,y,r-tim,colors[2]) end
 end
-debug =true
+
+-- END
+
 if debug then
   game.s = 2
   HER = {Player(1, 1), Player(2, 2), Player(3, 3)}
   monstpack={1, 2, 3}
   cmonst = {Monst(1, 1), Monst(1, 2), Monst(1, 3)}
-  anims[#anims+1]= Anim(TL[1].x, TL[1].y, "die", 1, cmonst[1], cols[1])
+  --anims[#anims+1]= Anim(TL[1].x, TL[1].y, "die", 1, cmonst[1], cols[1])
 end

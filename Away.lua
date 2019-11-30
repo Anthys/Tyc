@@ -17,7 +17,7 @@ p={
 	lx=5,ly=6,
 	th=0,
 	fuel=0,
-	mxfuel=2000
+	mxfuel=200
 }
 
 LENX=240
