@@ -285,7 +285,7 @@ function TIC()
     ic2 = iic2--tweak(pi/3)
     ic1 = iic1
     pine(LENX//2,LENY,20,pi/2,10,0.4,pi/3,8,0)
-    pine(LENX//2-70,0,20,-pi/2,10,tweak(0.4),tweak(pi/3),8,0)
+    --pine(LENX//2-70,0,20,-pi/2,10,tweak(0.4),tweak(pi/3),8,0)
   elseif anim == 22 then
     cls()
     ic2 = iic2

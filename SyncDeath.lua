@@ -87,7 +87,7 @@ DEATH_COND = 1 -- number of people to die to end the game
 
 MX_WAIT = 50 -- decrease to quicken animations
 
-FREE_PLAY = false
+FREE_PLAY = true
 
 -- Variables
 

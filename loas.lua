@@ -87,9 +87,7 @@ end
 
 function condition()
   local condi = {}
-  condi.check = function check()
-    
-    end
+  condi.check = false
   return condi
 end
 
@@ -329,7 +327,7 @@ end
 
 
 --up down left right udlr
-g.s=2
+g.s=1
 
 function trace_matrix(mtrx)
   trace("###")

@@ -5,37 +5,45 @@ c=math.cos
 function TIC()
   cls(0)
   t=t+1
-  spiral()
+  adn(50,-20)
+  stars(-60,-30)
+  tube(-60,30)
+  spiral(50,-20)
+  adn(50,40)
 end
 
-function stars()
-  for x=0,40 do
+function stars(a,b)
+  local a,b = a or 0, b or 0
+  for x=-40,40 do
     y = c(x+t)*20
-    pix(x+100,y+60,15)
+    pix(x+100+a,y+60+b,15)
   end
 end
 
-function tube()
-  for x=0,40 do
+function tube(a,b)
+  local a,b = a or 0, b or 0
+  for x=-40,40 do
     local t2=t/10
     y = c(x+ t/32)*30
-    pix(x+100,y+60,15)
+    pix(x+100+a,y+60+b,15)
   end
 end
 
-function adn()
+function adn(a,b)
+  local a,b = a or 0, b or 0
   for x=0,120 do
     local t2=t/10
     y = c(s(x/20)+ t/50)*c(x)*15
-    pix(x+40,y+60,15)
+    pix(x+40+a,y+60+b,15)
   end
 end
 
-function spiral()
+function spiral(a,b)
+  local a,b = a or 0, b or 0
 for x=0,120 do
   local t2=t/10
   y = c(s(x/20)+ t/50)*15*s(t/32)
-  pix(x+40,y+60,15)
+  pix(x+40+a,y+60+b,15)
 end
 end
 

@@ -60,7 +60,7 @@ function simul()
 	--for i,v in pairs(particls) do
 	--	circ(v.x, v.y,3, 15)
 	--end
-	grid()
+	--grid()
 	local frac = 25
 	local fcycl = frac*2
 	local t1 = frac

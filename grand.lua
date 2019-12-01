@@ -1,12 +1,12 @@
 function TIC()
-    t=t+0.01
+    t=t+1
     --cls()
-    --intro()
+    intro()
     --secundo()
-    --tertio()
-    --quatro()
+    tertio()
+    quatro()
     --losange()
-    render_cube()
+    --render_cube()
 end
 cls()
 t=0
