@@ -1,8 +1,6 @@
 --SyncDeath
 
 -- next: Fix the dying animation, problem should be caused by interactions with other animations.
--- Make squads instead of people
--- Add the counter attack type, where the monster give back 50% of the attack
 -- Leadboards
 
 --palette: 0black 15white 1text 2-3mnst 5-6-7-8player 9-10selec 11-12background 13breakattack
@@ -28,21 +26,21 @@ BIB = {
     {"sneaky jump", 1, "def", 100},
     {"give back", 1, "da", 1},
     {"mirror",1,"da",2},
-    {"nightmare", 2, 'att', 5 }
+    {"nightmare", 2, 'att', 5}
     --{"name", "preptime int", "type", "value", "stopable bool false default", "can break"}
   },
   PL = {
-    {"michel", "Warrior of the void", 6, {3,8,10}, 8},
-    {"steven", "Strongest man alive", 7, {2,5,4}, 11},
+    {"michel", "Warrior of the void", 6, {8,3,10}, 10},
+    {"steven", "Strongest man alive", 7, {2,5,4}, 14},
     {"elodie", "I don't really know her", 8, {9,4,11}, 8},
-    {"lucile", "Also called kevin", 5, {4, 5, 6}, 7},
-    {"philip", "A handsome boi", 6, {1,4,6}, 9},
-    {"janine", "Queen of everything", 6, {1,4,6}, 9},
-    {"nadine", "Came back from hell", 6, {1,4,6}, 9}
+    {"lucile", "Also called kevin", 5, {2, 7, 2}, 11},
+    {"philip", "A handsome boi", 6, {13,15,5}, 14},
+    {"janine", "Queen of everything", 6, {5,14,6}, 9},
+    {"nadine", "Came back from hell", 6, {1,5,12}, 12}
     --{"name", "desc", "col", "attacks", "hp"}
   },
   SP = {
-    {"Sword", "Sword attack", "att", 1, true},
+    {"Sword", "Sword attack", "att", 1, true},                            -- 1
     {"Axe", "Axe attack", "att", 2},
     {"Feint", "Feint", "def", 1},
     {"Shield", "Shield", "def", 3},
@@ -50,9 +48,13 @@ BIB = {
     {"RedPo", "Red potion", "heel", 2},
     {"Shout", "Shouting very loud", "att", 0, true},
     {"SmokBomb", "Drop a smoky bomb", "aa", 0, true, {["aa"]={1,1}}},
-    {"Divine", "Heal everyone", "s_1", 2, false},
-    {"Silence", "Break every attack", "s_2", 0, true},
-    {"Dagger", "Sneaky slice", "att", 1}
+    {"Fallen", "Heal everyone", "s_1", 2, false},
+    {"Silence", "Break every attack", "s_2", 0, true},                    -- 10
+    {"Dagger", "Sneaky slice", "att", 1},
+    {"Nightmares", "More damges if health is low", "s_3", 1},
+    {"Sacrifice", "Get every damages", "s_4"},
+    {"Despair", "Hit everyone", "s_5"},
+    {"Gun", "Gun attack", "att", 3},
     --{name str, description str, type str (att, def, heel), value int, can break, opt}
   }
 } -- attacks type : att (attacks enemy in front), def (self defense), heel (self heel), aa (attack self and front), da (defense and give back), s (special)
@@ -75,7 +77,10 @@ SPR= {
   ["heel"]= 225,
   ["aa"]=235,
   ["s_1"]=229,
-  ["s_2"]=234
+  ["s_2"]=234,
+  ["s_3"]=236,
+  ["s_4"]=230,
+  ["s_5"]=231
 }
 
 DEATH_COND = 1 -- number of people to die to end the game
@@ -87,33 +92,6 @@ FREE_PLAY = false
 -- Variables
 
 t=0
-tt=0
-
-spd = 7
-
-game = {
-  s=1,
-  rnd_st = 1,
-  sub_st = -1
-}
-
-sm_st = 0
-prepsq = {}
-
-HER = {}
-monstpack={}
-
-slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}, endm='',playch=1}
-
-VIS={chox=false, choxchox=false, descsp=false}
-
-scor = {
-  k=0,
-  r=0
-}
-
-cmonst = {}
-anims = {}
 
 -- Debug 
 
@@ -274,7 +252,7 @@ function TIC()
   _G[ST[game.s]]()
   t=t+1
   tt=tt+1
-  if keyp(14) then game.s = (game.s)%#ST + 1 end
+  if keyp(14) then game.s = (game.s)%#ST + 1 tt=0 end
   -- DEBUG
   if key(49) then show_debug() end
 end
@@ -337,12 +315,14 @@ function prepo()
         print(txt, mid(txt), 115, 0)
       end
     else
-      print(pmem(0))
       txt = SQUADS[slct.playch//2+1]
       local sz = print(txt, -100,-100, 0, false, 1, true)
       print(txt, 45-sz//2, 116,0, false, 1, true)
       rectb(45-sz//2,123,sz,1,0)
       rectb(12,112,66,20,0)
+      local tmp = (slct.playch//2)*2
+      print("K:"..pmem(tmp), 100,118,0)
+      print("R:"..pmem(tmp+1),120,118,0)
     end
     if btnp(0) and (FREE_PLAY or slct.chosh>1) then 
       if FREE_PLAY then slct.chosh =(slct.chosh-2)%#BIB.PL+1
@@ -397,6 +377,39 @@ function prepo()
     game.s = game.s+1
   end
 end
+
+function initall()
+  tt=0
+
+  spd = 7
+
+  HER = {}
+  monstpack={}
+
+  game = {
+    s=1,
+    rnd_st = 1,
+    sub_st = -1
+  }
+
+  sm_st = 0
+  prepsq = {}
+
+  slct = {chox=1, choxchox=1, act=0, chosh = 1, pl = {}, endm='',playch=1}
+  VIS={chox=false, choxchox=false, descsp=false}
+  
+  scor = {
+    k=0,
+    r=0
+  }
+
+  cmonst = {}
+  anims = {}
+
+  sacrif = 0
+end
+
+initall()
 
 debug = false
 -- HUD
@@ -511,11 +524,24 @@ function duo()
 end
 
 function player_turn(inx) 
+  sacrif = 0
   for i=1,3 do
     if HER[i].a then
-      HER[i].def = 0 
+      HER[i].def = 0
+      do_important_act(HER[i], HER[i].spels[inx], cmonst[i]) 
+    end
+  end
+  for i=1,3 do
+    if HER[i].a then 
       do_act(HER[i], HER[i].spels[inx], cmonst[i]) 
     end
+  end
+end
+
+function do_important_act(usr, act, tgt)
+  if not usr.a then return end
+  if string.sub(act.type,1,2) == "s_" then
+    if act.name == "Sacrifice" then sacrif = usr.i end
   end
 end
 
@@ -536,7 +562,7 @@ function do_act(usr, act, tgt)
   elseif act.type == "da" then
     usr.giveback = act.val
   elseif string.sub(act.type,1,2) == "s_" then
-    if act.name == "Divine" then
+    if act.name == "Fallen" then
       for i=1,3 do
         heelme(HER[i],nil,act.val)
       end
@@ -544,6 +570,18 @@ function do_act(usr, act, tgt)
       for i=1,3 do
         attack(usr, cmonst[i], nil, 0, true, true)
       end
+    elseif act.name == "Despair" then
+      for i=1,3 do
+        attack(usr, cmonst[i], nil, 2, false,false)
+      end
+      for i=1,3 do
+        attack(usr, HER[i], nil, 1, false,false)
+      end
+    elseif act.name == "Nightmares" then
+      local v, brk = 2, nil
+      if usr.pv <= usr.maxpv//3 then v = 5 brk = true
+      elseif usr.pv <= usr.maxpv//3*2 then v=3 end
+      attack(usr, tgt, nil, v, brk, true)
     end
   end
 end
@@ -592,19 +630,20 @@ function monster_def_turn()
 end
 
 function newmonst(monst, indx)
-  cmonst[indx] = Monst(monst, indx)
+  cmonst[indx] = Monst(monst, indx) 
 end
 
 function attack(source,tgt,att,val,brk,skipback)
-  local v,brk
+  local v,brk = val, brk
   if att == nil then v=val brk=brk else v = att.val brk = att.brk end
+  if source.th == "monst" and sacrif ~= 0 then tgt = HER[sacrif] end
   if tgt.def < 100 then
     if v-tgt.def > 0 then
       tgt.pv = tgt.pv - v + tgt.def end
     if tgt.giveback ~=0 and skipback==nil then attack(tgt,source,nil,math.ceil(v*tgt.giveback),nil,true) end
-    if tgt.spels[tgt.c_att].stop == true and (brk ==true) then stop_attack(tgt) end
-    if tgt.th ~= "ms" then
-      anims[#anims+1]=Anim(math.random(TL[tgt.i].x-20, TL[tgt.i].x+20), TL[tgt.i].y+(tgt.th =="pl" and 65 or 0), "hit", inv, v)
+    if tgt.spels[tgt.c_att].stop == true and (brk ==true) then trace(1) stop_attack(tgt) end
+    if v-tgt.def > 0 then
+      anims[#anims+1]=Anim(math.random(TL[tgt.i].x-20, TL[tgt.i].x+20), TL[tgt.i].y+(tgt.th =="pl" and 65 or 0), "hit", inv, v-tgt.def)
       if v<=3 then anims[#anims+1]=Anim(TL[tgt.i].x, TL[tgt.i].y +(tgt.th =="pl" and 65 or 0), "slice", rnd0(1)*2-1) 
       else 
         local inv = rnd0(1)*2-1
@@ -672,8 +711,10 @@ end
 
 function endo()
   if tt == 1 then 
-    pmem(0,scor.k)
-    pmem(1,scor.r)
+    local tmp = (slct.playch//2)*2
+    pmem(tmp,scor.k)
+    pmem(tmp+1,scor.r)
+    trace(pmem(0))
   end
   cls(0)
   if slct.endm == "" then slct.endm = ENDM[rnd1(#ENDM)] end
@@ -683,6 +724,12 @@ function endo()
   print(txt, 40, 60)
   txt = "Rounds: "..tostring(scor.r)
   print(txt, 40, 70)
+  for i=0,6 do
+    if btnp(i) then
+      game.s = game.s+1
+      initall()
+    end
+  end
 end
 
 function checkded()
