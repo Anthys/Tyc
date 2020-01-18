@@ -15,7 +15,7 @@ debug = false
 Player = {}
 Player.__index = Player
 
-function Player:new(spr,x,y)
+function Player:new(spr,x,y,lx,ly,col)
   local tmp = {}
   setmetatable(tmp,Player)
   tmp.x=x or 0
@@ -25,12 +25,14 @@ function Player:new(spr,x,y)
   tmp.dirx = 0
   tmp.diry = 0
   tmp.spr = spr or 1
-  tmp.lx = 8*2
-  tmp.ly = 8*2
+  tmp.lx = lx or 8
+  tmp.ly = ly or 8*2
+  tmp.lines = {}
+  tmp.col = col or 6
   return tmp
 end
 
-p1,p2 = Player:new(1), Player:new(3)
+p1,p2 = Player:new(6,nil,nil,nil,nil,6), Player:new(7,nil,nil,nil,nil,2)
 
 cur_player = 1
 
@@ -42,19 +44,53 @@ function TIC()
   tt=tt +1
 end
 
+function get_others(p)
+  local tmp = {}
+  for i,v in pairs(players) do
+    if v ~= p then tmp[#tmp+1]=v end
+  end
+  return tmp
+end
+
 function intro()
   local theplayer = players[cur_player]
+  local others = get_others(theplayer)
   cls(0)
   print(1)
   render_m()
   --get_input(theplayer)
   --physics_p(theplayer)
   physics_d(theplayer)
+  if tt%2==0 then 
+    add_line(theplayer) 
+    for i,v in pairs(others) do
+      remove_line(v)
+    end
+  end
   for i,v in pairs(players) do
     render_p(v)
+    draw_lines(v)
   end
   debug()
-  --if tt%100 == 0 then alternate() end
+  if tt%100 == 0 then alternate() end
+end
+
+function remove_line(p)
+  table.remove(p.lines, 1)
+end
+
+function add_line(p)
+  p.lines[#p.lines+1] = {p.x+p.lx//2,p.y+p.ly//2}
+end
+
+function draw_lines(p)
+  --print("yes")
+  if #p.lines >= 2 then
+    for i=1,#p.lines-1 do
+      local v1,v2 = p.lines[i],p.lines[i+1]
+      line(v1[1],v1[2],v2[1],v2[2],p.col)
+    end
+  end
 end
 
 function render_m()
@@ -114,7 +150,7 @@ function can_move(x,y)
 end
 
 function render_p(p)
-  spr(p.spr,p.x,p.y,0,1,0,0,2,2)
+  spr(p.spr,p.x,p.y,0,1,0,0,p.lx//8,p.ly//8)
 end
 
 --physics
@@ -127,7 +163,7 @@ function physics_d(pC)
   if IsOnGround(pC) and btn(0) then print(1) pC.dy = pC.dy - 8 end
   pC.dy = pC.dy - sign(pC.dy)*dragy*math.abs(pC.dy)
   if not TryMoveBy(pC,0,pC.dy) then pC.dy = pC.dy/2 end
-  get_input_D(pC)
+  get_input_E(pC)
   pC.dx = pC.dx - sign(pC.dx)*dragx*math.abs(pC.dx)
   if not TryMoveBy(pC,pC.dx,0) then pC.dx = pC.dx/2 end
 end
@@ -136,6 +172,12 @@ function get_input_D(p)
   local dd = 0.3
   if btn(2) then p.dx=p.dx-dd end
   if btn(3) then p.dx=p.dx+dd end
+end
+
+function get_input_E(p)
+  local dd = 2
+  if btn(2) then p.dx=-dd end
+  if btn(3) then p.dx=dd end
 end
 
 function IsOnGround(p)
