@@ -29,10 +29,14 @@ function Player:new(spr,x,y,lx,ly,col)
   tmp.ly = ly or 8*2
   tmp.lines = {}
   tmp.col = col or 6
+  tmp.inx = col_names[tmp.col] or "yes"
   return tmp
 end
 
-p1,p2 = Player:new(6,nil,nil,nil,nil,6), Player:new(7,nil,nil,nil,nil,2)
+col_names = {[6]="red", [2]="blue"}
+
+
+p1,p2 = Player:new(6,60,nil,nil,nil,6), Player:new(7,LENX-90,nil,nil,nil,2)
 
 cur_player = 1
 
@@ -52,6 +56,8 @@ function get_others(p)
   return tmp
 end
 
+ending = {t=0,p=0,x=0,y=0,vx=0,vy=0,tgt=nil}
+
 function intro()
   local theplayer = players[cur_player]
   local others = get_others(theplayer)
@@ -60,7 +66,7 @@ function intro()
   render_m()
   --get_input(theplayer)
   --physics_p(theplayer)
-  physics_d(theplayer)
+  if ending.t <= 0 then physics_d(theplayer) end
   if tt%2==0 then 
     add_line(theplayer) 
     for i,v in pairs(others) do
@@ -72,7 +78,76 @@ function intro()
     draw_lines(v)
   end
   debug()
-  if tt%100 == 0 then alternate() end
+  if ending.t<=0 then
+    checkend(theplayer, others)
+    if tt%100 == 0 then alternate() end
+  else
+    if ending.t == 1000 then
+      dance()
+    else
+      print("ENDING, "..tostring(ending.p), 0, 10)
+      line(ending.x,ending.y,ending.x+ending.vx*5,ending.y+ending.vy*5,5)
+      make_end()
+    end
+  end
+end
+
+cos = math.cos
+
+function dance()
+  for i=1,#players do
+    local p = players[i]
+    circ(p.x+1+cos(t/15)*2,p.y+p.ly//2+3,1,p.col)
+    circ(p.x+6+cos(t/15)*2,p.y+p.ly//2+3,1,p.col)
+  end
+end
+
+function make_end()
+  print(ending.t, 0,30)
+  local tmc = {80,100,150}
+
+  if true then ending.t = ending.t-1 end
+  local max_t = 200
+  local s_t = max_t - ending.t
+  if s_t<tmc[1] then 
+    rect(ending.x-ending.vx*s_t/2,ending.y-ending.vy*s_t/2,4,4,4)
+  elseif s_t < tmc[2] then
+    s2_t = s_t - tmc[1]
+    rect(ending.x-ending.vx*tmc[1]/2+ending.vx*s2_t*2,ending.y-ending.vy*tmc[1]/2+ending.vy*s2_t*2,4,4,4)
+  elseif s_t < tmc[3] then
+    s2t = s_t -tmc[2]
+    local p = ending.tgt
+    p.x = p.x + ending.vx*s2t*3
+    p.y = p.y + ending.vy*s2t*3
+  elseif s_t == tmc[3] then
+    ending.t = 1000
+  end
+end
+
+function checkend(theplayer, others)
+  for i=1,#others do
+    local target = others[i]
+    if collide_player(theplayer,target) then 
+      ending.t = 200
+      ending.p = theplayer.inx
+      ending.x = target.x + target.lx//2
+      ending.y = target.y + target.ly//2
+      ending.vx = target.x-theplayer.x
+      ending.vy = target.y-theplayer.y
+      ending.tgt = target
+      local ttmp = math.sqrt(ending.vx*ending.vx+ending.vy*ending.vy)
+      ending.vx,ending.vy = ending.vx*(1/ttmp),ending.vy*(1/ttmp)
+    end
+  end
+end
+
+abs = math.abs
+
+function collide_player(a,b)
+  if abs(a.x-b.x)<a.lx and abs(a.y-b.y)<a.ly then
+    return true
+  end
+  return false
 end
 
 function remove_line(p)
@@ -189,15 +264,17 @@ function IsOnGround(p)
   return false
 end
 
-function blocked(x,y)
-  return mget(x//8,y//8) == 65
+function blocked(x,y,spr)
+  local spr = spr or 65
+  return mget(x//8,y//8) == spr
 end
 
 
-function CanMove(p,x,y)
+function CanMove(p,x,y, spr)
+  local spr = spr or 65
   for i=0,p.lx-1 do
     for j=0,p.ly-1 do
-      if blocked(i+x,j+y) then
+      if blocked(i+x,j+y, spr) then
         return false
       end
     end
