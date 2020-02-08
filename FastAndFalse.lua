@@ -7,8 +7,9 @@ game = {
  cur_place = -1,
  cur_name = "",
  set = {},
- cur_comb = {txt=nil, bool=nil, t =0, mx_t = 130},
- cur_chox = 0
+ cur_comb = {txt=nil, bool=nil, t =0, mx_t = 130, glitch = {}, c=15, s=1},
+ cur_chox = 0,
+ glitch= false
 }
 
 t=0
@@ -48,14 +49,14 @@ set4 = {
   choices = {"Compliment", "Insulte"},
   elts = {
     {"T'es grave bo", "t bo kom 1 camion", "Charmante", "T'es belle kom 1 irondele", "magnifik", "Superbe", "sublime", "intelligent", "seduisante", "grave bonne", "jtm", "<3"},
-    {"Fdp de t morts", "astropute", "catapulte tes morts", "demeuré", "connard de con", "jte nik t morts",  "trouducu", "ntm", "tg putain", "TG", "va bien te faire encule gro", "salmerde", "lacalottedetesmorts"}
+    {"Fdp de t morts", "astropute", "catapulte tes morts", "demeuree", "connard de con", "jte nik t morts",  "trouducu", "ntm", "tg putain", "TG", "va bien te faire encule gro", "salmerde", "lacalottedetesmorts"}
   }
 }
 set5 = {
   choices = {"Compliment", "Insulte"},
   elts = {
     {"nymphe", "amour", "resplendissante", "delicieuse", "merveilleuse", "sublime", "magnifique", "rayonnante", "superbe","somptueuse", "belle"},
-    {"chenapan","malotru", "foutriquet", "gredin", "scélérat", "mauviette", "goujat", "vil faquin", "crétin des Alpes", "puterelle", "orchidoclaste", "faraud", "fripon", "godiche", "gougnafier", "houlier", "gourgandine", "malappris", "maraud", "olibrius", "pignouf", "sagouin"}
+    {"chien galeux", "chenapan","malotru", "foutriquet", "gredin", "scélérat", "mauviette", "goujat", "vil faquin", "crétin des Alpes", "puterelle", "orchidoclaste", "faraud", "fripon", "godiche", "gougnafier", "houlier", "gourgandine", "malappris", "maraud", "olibrius", "pignouf", "sagouin"}
   }
 }
 
@@ -74,6 +75,10 @@ end
 focus = {menu = {chox = 0}}
 
 BTN = {SPACE=48, ENTER=50, TAB=49}
+
+function default_comb()
+  return {txt=nil, bool=nil, t =0, mx_t = 130, glitch = {}, c=15, s=1}
+end
 
 function menu()
   cls()
@@ -141,7 +146,7 @@ function fast_and_false_texts()
 
   if #intro_th.fandf < 13 then
     if #intro_th.fandf < 6 or math.random(1,20) == 1 then 
-      trace(8)
+      --trace(8)
       local temp = {}
       temp.x = math.random(-250, -200)
       temp.y = math.random(20,LENY-20)
@@ -171,6 +176,7 @@ function actu_lead(mx_save,chx)
         pmem(i+(2*chx+1)*mx_save, pmem(i-1+(2*chx+1)*mx_save))
       end
       pmem(place, game.score)
+      pmem(place +mx_save, 0)
       trace(place)
       return place
     end
@@ -187,7 +193,7 @@ end
 
 function leadboard()
   cls()
-  local bib = {"8/12", "Y/N", "An/Mob", "Com/Ins"}
+  local bib = {"8/12", "Y/N", "Com/Ins", "An/Mob"}
   if false then 
   for i=0,100 do
     pmem(i, i)
@@ -224,7 +230,7 @@ end
 function init(chx)
   local chx = chx or game.cur_chox
   game.set = all_sets[chx+1]
-  game.cur_comb = {txt=nil, bool=nil, t =0, mx_t = 130}
+  game.cur_comb = default_comb()
   lose = false
   game.score = 0
   game.cur_place = -1
@@ -233,15 +239,33 @@ end
 
 --choices = {"y", "f"}
 
-function show_text(txt)
+function show_text(comb)
+  local txt = comb.txt
+  local glitch = comb.glitch
   if type(txt) == "table" then
     for i,j in pairs(txt) do
-      print(j, LENX/2-plx(j)//2, LENY/2 +((i-#txt/2)*8) -5)
+      print(j, LENX/2-plx(j)//2, LENY/2 +((i-#txt/2)*8) -5, comb.c)
     end
   else
-    print(txt, LENX/2 -plx(txt)/2, LENY/2)
+    if glitch then
+      print(txt, LENX/2-plx_bet(txt,comb.s, false)/2, LENY/2-comb.s*4,comb.c,false, comb.s)
+    else
+      print(txt, LENX/2 -plx(txt)/2, LENY/2, comb.c)
+    end
   end
 end
+
+function actu_glitch(comb)
+  local glitch = comb.glitch
+  if glitch.s then
+    comb.s = glitch.s
+  end
+  if glitch.c and t%3 == 0 then
+    comb.c = math.random(1,15)
+  end
+  return comb
+end
+
 
 function chose_text()
   local set = game.set
@@ -266,6 +290,56 @@ end
 
 mx_save = 10
 
+--lost = true
+game.s = 1
+
+high_end_p = {}
+
+cos = math.cos
+abs= math.abs
+sin = math.sin
+max = math.max
+min = math.min
+
+function high_score()
+  if t%4 == 0 then
+    gener_burst(10,LENX/2-80,LENY/2,true)
+    gener_burst(10,LENX/2+80,LENY/2,true)
+  end
+  for i,v in pairs(high_end_p) do
+    circ(v.x,v.y,v.s,v.c)
+    v.vy = min(v.vy+0.1,2)
+    v.x = v.x+v.vx
+    v.y=v.y+v.vy
+    if v.x > 240 or v.x <0 or v.y > LENY or v.y <0 or (false and v.y > v.my+v.sy) or v.t > v.mt then table.remove(high_end_p,i) end
+    --if v.t > v.mt then table.remove(high_end_p,i) end
+    v.t = v.t + 1
+  end
+end
+
+function gener_burst(nb, x, y, up)
+  for i=1,nb do
+    local temp = {}
+    temp.x = x
+    temp.y = y
+    temp.sx = x
+    temp.sy = y
+    local mx = 3
+    temp.vx = math.random()*mx-mx/2
+    temp.vy = math.random()*2*-1
+    temp.s = 1
+    local cols = {14,6}
+    temp.c = cols[math.random(#cols)]
+    temp.t = 0
+    temp.mt = 30
+    temp.my = 20
+    high_end_p[#high_end_p+1] = temp
+  end
+end
+
+
+--game.glitch = false
+
 function lost()
   cls()
   print("Game over",LENX/2-plx("Game over")/2, LENY/2)
@@ -276,6 +350,16 @@ function lost()
     game.score = 0 
   end
   if game.cur_place ~= nil and game.cur_place ~= -1 then 
+    if game.cur_place%(mx_save*2) == 1 then
+      rect(0,0,LENX,11,1)
+      rectb(-1,0,LENX+2,11,2)
+      rect(0,LENY-11,LENX,11,1)
+      rectb(-1,LENY-11,LENX+2,11,2)
+      local txt = "High Score ! High Score ! High Score ! High Score ! High Score ! High Score ! High Score ! "
+      print(txt, -100+(0.5*t%plx("High Score ! ")), 3)
+      print(txt, - (0.5*t%plx("High Score ! "))-20, LENY-8)
+      high_score()
+    end
     local txt = "Score is in top 10!"
     print(txt,  LENX//2 -plx(txt)/2, 20)
     local txt = "Type your name and press enter"
@@ -308,6 +392,20 @@ function lost()
   maybe_leaderboard()
 end
 
+function chose_glitch()
+  local temp = {}
+  local l = {"big", "col"}
+  temp.s = false
+  temp.c = false
+  local a = l[math.random(#l)]
+  if a == "big" then
+    temp.s = math.random(1,4)
+  elseif a == "col" then 
+    temp.c = true
+  end
+  return temp
+end 
+
 function in_game()
   local cur_comb = game.cur_comb
   cls()
@@ -320,6 +418,7 @@ function in_game()
     local a,b = chose_text()
     --if a == 1 then a = "L" elseif a == 2 then a = "R" end
     cur_comb.txt, cur_comb.bool = b,a
+    if game.glitch then cur_comb.glitch = chose_glitch() end
   end
 
   show_indics(game.set.choices)
@@ -327,7 +426,9 @@ function in_game()
   cur_comb.t = show_timer(cur_comb.t, cur_comb.mx_t)
   check_timer(cur_comb.t, cur_comb.mx_t)
 
-  show_text(cur_comb.txt)
+  cur_comb = actu_glitch(cur_comb)
+
+  show_text(cur_comb)
 
 
   ans = get_input()
@@ -362,10 +463,9 @@ function check_true(ans, cur_comb)
   else
     lose = true
   end
-  cur_comb.txt=nil
-  cur_comb.bool=nil
-  cur_comb.t = 0
-  cur_comb.mx_t = cur_comb.mx_t*0.95
+  local keep = cur_comb.mx_t*0.95
+  cur_comb = default_comb()
+  cur_comb.mx_t = keep
   return cur_comb
 end
 
