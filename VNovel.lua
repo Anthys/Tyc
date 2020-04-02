@@ -213,9 +213,11 @@ function init()
     a = Panel:n(10,10,200,25)
     c = Character:n("Micheml", 3)
     e = Character:n("Christine", 6)
+    f = Message:n("D e a t h", c, 3)
     b = Message:n("Bonjour, je me prenome gustave michael, j'adore les voitures et les six tonnes. Rhododindron a vous aussi.", c)
     d = Message:n("Je t'aime bb tes trop le plus bo je veux etre la cerise de ton cake frero je temenerai au neuviem ciel on va fer des trucs de fou", e)
     --a.msg = b
+    a:add_messsage(f)
     a:add_messsage(b)
     a:add_messsage(d)
 end
@@ -225,6 +227,7 @@ function intro()
     cls()
     print(1)
     a:draw()
+    a.y = LENY//2+cos(t/64)*30
     if keyp(48) then a:process_skip() end
     --print(a.msg, 20, 20)
 end
