@@ -1,6 +1,8 @@
 {
   "code-runner.executorMap": {
-      "lua": "D:\\Logiciels\\tic80_0.70.6\\tic80 $fileNameWithoutExt.tic -code-watch $fullFileName",
+      "lua": "C:\\Users\\julba\\Documents\\Github\\Tyc\\tic80.exe C:\\Users\\julba\\Documents\\Github\\Tyc\\$fileNameWithoutExt.tic -code-watch $fullFileName",
       "moon": "D:\\Logiciels\\tic80_0.70.6\\tic80 $fileNameWithoutExt.tic -code $fullFileName",
-  }
+  },
+  "Tic80.executablePath": "C:\\Users\\julba\\Documents\\Github\\Tyc\\tic80.exe",
+  "Tic80.executablePathCard": "C:\\Users\\julba\\Documents\\Github\\Tyc"
 }
