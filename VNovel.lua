@@ -40,7 +40,9 @@ function Panel:n(x,y,sx,sy,c)
     tmp.tt = 0
     tmp.waiting = false
     tmp.continue_alone = true
-    tmp.pause = 30
+    tmp.pause_read = 30
+    tmp.pause_void = 0
+    tmp.block = false
     return tmp
 end
 
@@ -61,15 +63,19 @@ function Panel:draw_text()
         --trace(self.msg)
         local msg = self.msg
         local x,y = self.x+self.dx, self.y+self.dy
-        local pause = self.pause
-        local mxtime = msg.speed * 4* #msg.txt + pause
-        local txt1 = string.sub(msg.txt, 1, (#msg.txt*( self.tt/(mxtime-pause) ))//1)
-        txt1 = msg.char.name .. ": " .. txt1
-        print(txt1, x, y, msg.char.col)
-        if self.tt >= mxtime - pause then
+        local pause = self.pause_read
+        local mxtime_appear = msg.speed *4*#msg.txt
+        local mxtime_visible = mxtime_appear + self.pause_read
+        local mxtime_global = mxtime_visible + self.pause_void
+        if self.tt < mxtime_visible or self.pause_void == 0 then 
+            local txt1 = string.sub(msg.txt, 1, (#msg.txt*( self.tt/(mxtime_appear) ))//1)
+            txt1 = msg.char.name .. ": " .. txt1
+            print(txt1, x, y, msg.char.col)
+        end
+        if self.tt >= mxtime_appear then
             self.waiting = true
         end
-        if self.tt > mxtime and #self.queue > 0 and self.continue_alone then 
+        if self.tt > mxtime_global and #self.queue > 0 and self.continue_alone then 
             self:next_m()
         end
     elseif #self.queue > 0 then
@@ -152,11 +158,13 @@ function Panel:next_m()
 end
 
 function Panel:process_skip()
-    if self.waiting then 
-        self:next_m()
-    else
-        local msg = self.msg
-        self.tt = msg.speed * 4* #msg.txt
+    if self.block == false then 
+        if self.waiting then 
+            self:next_m()
+        else
+            local msg = self.msg
+            self.tt = msg.speed * 4* #msg.txt
+        end
     end
 end
 
@@ -178,6 +186,7 @@ end
 function Message:__tostring()
     return self.txt
 end
+
 ----------
 
 Character = {}
@@ -189,6 +198,14 @@ function Character:n(name, col)
     tmp.name = name or "Michel"
     tmp.col = col or 2
     return tmp
+end
+
+----------
+
+Input_Buttons = {}
+Input_Buttons.__index = Input_Buttons
+
+function Input_Buttons:n(inx, buttons)
 end
 
 
