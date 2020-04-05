@@ -19,6 +19,8 @@ pi = math.pi
 
 debug = false
 
+mouse_hold = {l=false, m=false, r = false}
+
 -------------
 -------------
 
@@ -157,6 +159,7 @@ function Gui:n(x,y)
     tmp.y = y or 0
     tmp.c = math.random(12)
     tmp.children = {}
+    tmp.parent = nil
     setmetatable(tmp, Gui)
     return tmp
 end
@@ -178,6 +181,82 @@ function Gui:update()
     end
 end
 
+function Gui:is_mouse_on()
+    return false
+end
+
+Multichoice = Gui:n()
+Multichoice.__index = Multichoice
+
+function Multichoice:n(x,y,ncol,nline)
+    local tmp = Gui:n(x,y)
+    local sx,sy = 5,5
+    local dx,dy = sx*(ncol+1)+1, sy*(nline+1)+2
+    tmp.dx = dx
+    tmp.dy = dy
+    for i=1,nline do
+        for j=1,ncol do
+            local temp_switch = Switch:n(x-dx//2+sx//2+1+(sx+1)*j,y-dy//2+sy//2+1+(sy+1)*i,sx,sy)
+            --temp_switch.update = call_parent
+            temp_switch.parent = tmp
+            tmp.children[#tmp.children+1] = temp_switch
+        end
+    end
+    --tmp.on = tmp.children[1]
+    --tmp.on:switch()
+    local behaviour = copy(Gui)
+    for i,v in pairs(Multichoice) do
+        behaviour[i] = v
+    end
+    setmetatable(tmp, behaviour)
+    return tmp
+end
+
+function Multichoice:draw()
+    rect(self.x-self.dx//2, self.y-self.dy//2, self.dx, self.dy, self.c)
+    for i=1,#self.children do
+        self.children[i]:draw()
+    end
+end
+
+function Multichoice:is_mouse_on(x,y)
+    dist = {x=abs(x-self.x), y=abs(y-self.y)}
+    return dist.x<self.dx and dist.y<self.dy
+end
+
+ChoiceButtons = Gui:n()
+ChoiceButtons.__index = ChoiceButtons
+
+function ChoiceButtons:n(x,y,ncol,nline)
+    local tmp = Multichoice:n(x,y,ncol,nline)
+    for i=1,#tmp.children do
+        local temp = tmp.children[i]
+        temp.update = call_parent
+    end
+    tmp.on = tmp.children[1]
+    tmp.on:switch()
+    local behaviour = copy(Multichoice)
+    for i,v in pairs(ChoiceButtons) do
+        behaviour[i] = v
+    end
+    setmetatable(tmp, behaviour)
+    return tmp
+end
+
+function ChoiceButtons:draw()
+    rect(self.x-self.dx//2, self.y-self.dy//2, self.dx, self.dy, self.c)
+    for i=1,#self.children do
+        self.children[i]:draw()
+    end
+end
+
+function ChoiceButtons:is_mouse_on(x,y)
+    dist = {x=abs(x-self.x), y=abs(y-self.y)}
+    return dist.x<self.dx and dist.y<self.dy
+end
+
+
+
 Switch = Gui:n()
 Switch.__index = Switch
 
@@ -188,10 +267,10 @@ function Switch:n(x,y,dx,dy)
     tmp.on = false
     tmp.state = {
         on = {
-            col = math.random(14)
+            col = 6
         },
         off = {
-            col = math.random(14)
+            col = 5
         }
     }
     local behaviour = copy(Gui)
@@ -206,16 +285,34 @@ function Switch:switch()
     self.on = not self.on
 end
 
+
 function Switch:draw()
     local state = (self.on and self.state.on or self.state.off) 
     local col = state.col
     rect(self.x-self.dx//2, self.y-self.dy//2, self.dx, self.dy, col)
 end
 
+function call_parent(self)
+    local x,y,l,m,r = mouse()
+    local has_obj = (hand.taken ~= nil)
+    --print(clickp("l"), 130,40,15)
+    if clickp("l") and (has_obj == false) then
+        if self:is_mouse_on(x,y) then
+            self:switch()
+            if self.parent then
+                self.parent.on:switch()
+                self.parent.on = self
+            end
+        end
+    end
+end
+
+
 function Switch:update()
     local x,y,l,m,r = mouse()
     local has_obj = (hand.taken ~= nil)
-    if l and (has_obj == false) then
+    --print(clickp("l"), 130,40,15)
+    if clickp("l") and (has_obj == false) then
         if self:is_mouse_on(x,y) then
             self:switch()
         end
@@ -224,7 +321,7 @@ end
 
 function Switch:is_mouse_on(x,y)
     dist = {x=abs(x-self.x), y=abs(y-self.y)}
-    return dist.x<self.dx and dist.y<self.dy
+    return dist.x<self.dx and dist.y<self.d
 end
 
 Slider = Gui:n()
@@ -332,6 +429,12 @@ function plx(txt)
     return print(txt, -1000,-1000)
 end
 
+function clickp(mbt)
+    local mh = mouse_hold
+    x,y,l,m,r = mouse()
+    return (mbt == "l" and (l and not mh.l) or mbt == "r" and (r and not mh.r) or mbt == "m" and (m and not mh.m))
+end
+
 function print_ctr(txt,x,y,c)
     local s = plx(txt)
     print(txt, x-s//2, y,c)
@@ -351,7 +454,9 @@ function init()
     panier[#panier+1] = Losange:n(90,50,20,50)
     panier[#panier+1] = Oval:n(20,70,30,20)
     panier[#panier+1] = Slider:n(20,90,100,10)
-    panier[#panier+1] = Switch:n(90,90,10,10)
+    panier[#panier+1] = Multichoice:n(90,90,3,3)
+    --panier[#panier+1] = Switch:n(90,90,10,10)
+    panier[#panier+1] = ChoiceButtons:n(90,90,3,3)
 end
 
 --init()
@@ -364,6 +469,13 @@ function intro()
         drag:draw()
     end
     update_and_mouse()
+    set_mouse_hold()
+end
+
+function set_mouse_hold()
+    local hold = mouse_hold
+    x,y,l,m,r = mouse()
+    hold.l,hold.m,hold.r = l,m,r
 end
 
 function TIC()
