@@ -65,6 +65,7 @@ function Rectangle:n(x,y, dx, dy)
         behaviour[i] = v
     end
     setmetatable(tmp, behaviour)
+    tmp.is_mouse_on = is_on_rect
     return tmp
 end
 
@@ -72,9 +73,6 @@ function Rectangle:draw()
     rect(self.x-self.dx//2, self.y-self.dy//2, self.dx, self.dy, self.c)
 end
 
-function Rectangle:is_mouse_on(x,y)
-    return self.x+self.dx//2 > x and self.x-self.dx//2 <x and self.y + self.dy//2 > y and self.y - self.dy//2 < y
-end
 
 Losange = Dragable:n()
 Losange.__index = Losange
@@ -191,12 +189,12 @@ Multichoice.__index = Multichoice
 function Multichoice:n(x,y,ncol,nline)
     local tmp = Gui:n(x,y)
     local sx,sy = 5,5
-    local dx,dy = sx*(ncol+1)+1, sy*(nline+1)+2
+    local dx,dy = sx*(ncol+1)-1, sy*(nline+1)-1
     tmp.dx = dx
     tmp.dy = dy
     for i=1,nline do
         for j=1,ncol do
-            local temp_switch = Switch:n(x-dx//2+sx//2+1+(sx+1)*j,y-dy//2+sy//2+1+(sy+1)*i,sx,sy)
+            local temp_switch = Switch:n(x-dx//2+sx//2+1+(sx+1)*(j-1),y-dy//2+sy//2+1+(sy+1)*(i-1),sx,sy)
             --temp_switch.update = call_parent
             temp_switch.parent = tmp
             tmp.children[#tmp.children+1] = temp_switch
@@ -209,6 +207,7 @@ function Multichoice:n(x,y,ncol,nline)
         behaviour[i] = v
     end
     setmetatable(tmp, behaviour)
+    tmp.is_mouse_on = is_on_rect
     return tmp
 end
 
@@ -219,10 +218,6 @@ function Multichoice:draw()
     end
 end
 
-function Multichoice:is_mouse_on(x,y)
-    dist = {x=abs(x-self.x), y=abs(y-self.y)}
-    return dist.x<self.dx and dist.y<self.dy
-end
 
 ChoiceButtons = Gui:n()
 ChoiceButtons.__index = ChoiceButtons
@@ -240,6 +235,8 @@ function ChoiceButtons:n(x,y,ncol,nline)
         behaviour[i] = v
     end
     setmetatable(tmp, behaviour)
+    
+    tmp.is_mouse_on = is_on_rect
     return tmp
 end
 
@@ -248,11 +245,6 @@ function ChoiceButtons:draw()
     for i=1,#self.children do
         self.children[i]:draw()
     end
-end
-
-function ChoiceButtons:is_mouse_on(x,y)
-    dist = {x=abs(x-self.x), y=abs(y-self.y)}
-    return dist.x<self.dx and dist.y<self.dy
 end
 
 
@@ -278,6 +270,7 @@ function Switch:n(x,y,dx,dy)
         behaviour[i] = v
     end
     setmetatable(tmp, behaviour)
+    tmp.is_mouse_on = is_on_rect
     return tmp
 end
 
@@ -319,10 +312,11 @@ function Switch:update()
     end
 end
 
-function Switch:is_mouse_on(x,y)
+function is_on_rect(self,x,y)
     dist = {x=abs(x-self.x), y=abs(y-self.y)}
-    return dist.x<self.dx and dist.y<self.d
+    return dist.x<=self.dx//2 and dist.y<=self.dy//2
 end
+
 
 Slider = Gui:n()
 Slider.__index = Slider
